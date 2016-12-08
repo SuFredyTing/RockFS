@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bitmap.h"
+#include "common.h"
 #include "spdk_interface.h"
-
-#define BLOCK_SIZE 4096
 
 void 
 clear_block(int addr)
@@ -97,6 +97,7 @@ find_first_zero(int addr, int *nr)
 	free(buf);
 }
 
+/*
 int 
 main ()
 {
@@ -106,13 +107,13 @@ main ()
 
 	spdk_init();
 	
-	/*printf("init word:\n");
-	for(i = 0; i < BLOCK_SIZE; i++) {
-		buf[i] = 0x00;
-		printf("%02X ", buf[i]);
-	}
+	//printf("init word:\n");
+	//for(i = 0; i < BLOCK_SIZE; i++) {
+	//	buf[i] = 0x00;
+	//	printf("%02X ", buf[i]);
+	//}
 	printf("\nend!\n");
-	*/
+	
 	clear_block(2);
 	//set_bit(2, 2, 1);
 	//get_bit(3, 2, &tmp);
@@ -135,4 +136,4 @@ main ()
 
 	return 0;
 }
-
+*/

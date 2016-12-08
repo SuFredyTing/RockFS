@@ -4,9 +4,8 @@
 #include "spdk/nvme.h"
 #include "spdk/env.h"
 
+#include "common.h"
 #include "spdk_interface.h"
-
-enum RW_MODE { READ = 1, WRITE };
 
 struct ctrlr_entry {
 	struct spdk_nvme_ctrlr	*ctrlr;
