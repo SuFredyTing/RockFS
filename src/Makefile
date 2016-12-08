@@ -1,3 +1,6 @@
+SPDK_ROOT_DIR := /home/ystu/spdk
+include ../mk/spdk.common.mk
+
 ######################################
 #
 #######################################
@@ -9,16 +12,16 @@ OBJS    := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCE)))
 #target you can change test to what you want
 #目标文件名，输入任意你想要的执行文件名
 TARGET  := table_storage
-  
+
 #compile and lib parameter
 #编译参数
 CC      := gcc
-LIBS    :=
-LDFLAGS :=
-DEFINES :=
-INCLUDE := -I.
-CFLAGS  := -g -Wall -O3 $(DEFINES) $(INCLUDE) 
-CXXFLAGS:= $(CFLAGS) -DHAVE_CONFIG_H
+LIBS    += 
+LDFLAGS +=
+DEFINES +=
+INCLUDE += -I. 
+CFLAGS  += -O3 $(DEFINES) $(INCLUDE) 
+CXXFLAGS+= $(CFLAGS) -DHAVE_CONFIG_H
   
   
 #i think you should do anything here
@@ -36,9 +39,14 @@ rebuild: veryclean everything
 clean :
 	rm -fr *.so
 	rm -fr *.o
-
+	rm -rf *.d
+	rm -rf ../bin/*
+ 
 veryclean : clean
 	rm -fr $(TARGET)
   
 $(TARGET) : $(OBJS)
-	$(CC) $(CXXFLAGS) `pkg-config fuse3 --cflags --libs` -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
+	$(CC) `pkg-config fuse3 --cflags --libs` -o $@ $(CPPFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) 
+	mv $(TARGET) ../bin/
+
+include ../mk/nvme.libtest.mk	

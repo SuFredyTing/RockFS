@@ -1,3 +1,9 @@
+#include <rte_config.h>
+#include <rte_eal.h>
+
+#include "spdk/nvme.h"
+#include "spdk/env.h"
+
 #include "spdk_interface.h"
 
 enum RW_MODE { READ = 1, WRITE };
@@ -31,7 +37,7 @@ struct storage_sequence {
 static struct ctrlr_entry *g_controllers = NULL;
 static struct ns_entry *g_namespaces = NULL;
 
-static void
+void
 register_ns(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns)
 {
 	struct ns_entry *entry;
@@ -61,17 +67,17 @@ register_ns(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns)
 	       spdk_nvme_ns_get_size(ns) / 1000000000);
 }
 
-static void
+void
 read_complete(void *arg, const struct spdk_nvme_cpl *completion)
 {
 	struct storage_sequence *sequence = arg;
 
-	//printf("%s", sequence->buf);
-	spdk_free(sequence->buf);
+//	printf("%s", sequence->buf);
+	//spdk_free(sequence->buf);
 	sequence->is_completed = 1;
 }
 
-static void
+void
 write_complete(void *arg, const struct spdk_nvme_cpl *completion)
 {
 	struct storage_sequence	*sequence = arg;
@@ -81,16 +87,18 @@ write_complete(void *arg, const struct spdk_nvme_cpl *completion)
 	spdk_free(sequence->buf);
 	sequence->buf = spdk_zmalloc(0x1000, 0x1000, NULL);
 */
-    spdk_free(sequence->buf);
+ //   spdk_free(sequence->buf);
 	sequence->is_completed = 1;
 }
 
-static int 
+int 
 spdk_read_and_write(char *buf, int start, int length, int mode)
 {
 	struct ns_entry         *ns_entry;
 	struct storage_sequence sequence;
 	int             rc;
+
+	//init();
 
 	ns_entry = g_namespaces;
 	while (ns_entry != NULL) {
@@ -124,15 +132,26 @@ spdk_read_and_write(char *buf, int start, int length, int mode)
 				fprintf(stderr, "starting read I/O failed\n");
 				exit(1);
 			}
+//			printf("sequence.buf=%s\n", sequence.buf);
+//			memcpy(*buf, sequence.buf, sizeof(char) * 4096);
+//			printf("*buf=%s\n",*buf);
 		}
         
 	    while (!sequence.is_completed) {
         	spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
 		}
+	
+		printf("sequence.buf=%s\n", sequence.buf);
+		memcpy(buf, sequence.buf, sizeof(char) * length * 4096);
+		printf("*buf=%s\n",buf);
+	
+    	spdk_free(sequence.buf);
 		
 		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
 		ns_entry = ns_entry->next;
 	}
+
+	//cleanup();
 }
 
 /*
@@ -177,7 +196,7 @@ hello_world(void)
 }
 */
 
-static bool
+bool
 probe_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
 	 struct spdk_nvme_ctrlr_opts *opts)
 {
@@ -190,7 +209,7 @@ probe_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
 	return true;
 }
 
-static void
+void
 attach_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
 	  struct spdk_nvme_ctrlr *ctrlr, const struct spdk_nvme_ctrlr_opts *opts)
 {
@@ -223,8 +242,8 @@ attach_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
 	}
 }
 
-static void
-cleanup(void)
+void
+spdk_cleanup(void)
 {
 	struct ns_entry *ns_entry = g_namespaces;
 	struct ctrlr_entry *ctrlr_entry = g_controllers;
@@ -244,8 +263,8 @@ cleanup(void)
 	}
 }
 
-static int 
-init(void)
+int 
+spdk_init(void)
 {
 	int rc;
 
@@ -260,7 +279,7 @@ init(void)
 	rc = spdk_nvme_probe(NULL, probe_cb, attach_cb, NULL);
 	if (rc != 0) {
 		fprintf(stderr, "spdk_nvme_probe() failed\n");
-		cleanup();
+		spdk_cleanup();
 		return 1;
 	}
 

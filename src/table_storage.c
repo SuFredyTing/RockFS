@@ -1,24 +1,3 @@
-/*
-  FUSE: Filesystem in Userspace
-  Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
-
-  This program can be distributed under the terms of the GNU GPL.
-  See the file COPYING.
-*/
-
-/** @file
- *
- * minimal example filesystem using high-level API
- *
- * Compile with:
- *
- *     gcc -Wall hello.c `pkg-config fuse3 --cflags --libs` -o hello
- *
- * ## Source code ##
- * \include hello.c
- */
-
-
 #define FUSE_USE_VERSION 30
 
 #include <config.h>
@@ -54,15 +33,22 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
-static void *hello_init(struct fuse_conn_info *conn,
+static void *stor_init(struct fuse_conn_info *conn,
 			struct fuse_config *cfg)
 {
 	(void) conn;
 	cfg->kernel_cache = 1;
+	if (spdk_init() != 0) 
+		exit(1);
 	return NULL;
 }
 
-static int hello_getattr(const char *path, struct stat *stbuf,
+static void stor_destroy(void *value)
+{
+	spdk_cleanup();
+}
+
+static int stor_getattr(const char *path, struct stat *stbuf,
 			 struct fuse_file_info *fi)
 {
 	(void) fi;
@@ -82,7 +68,7 @@ static int hello_getattr(const char *path, struct stat *stbuf,
 	return res;
 }
 
-static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi,
 			 enum fuse_readdir_flags flags)
 {
@@ -100,7 +86,7 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
-static int hello_open(const char *path, struct fuse_file_info *fi)
+static int stor_open(const char *path, struct fuse_file_info *fi)
 {
 	if (strcmp(path+1, options.filename) != 0)
 		return -ENOENT;
@@ -111,7 +97,7 @@ static int hello_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int hello_read(const char *path, char *buf, size_t size, off_t offset,
+static int stor_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
 	size_t len;
@@ -130,21 +116,22 @@ static int hello_read(const char *path, char *buf, size_t size, off_t offset,
 	return size;
 }
 
-static struct fuse_operations hello_oper = {
-	.init           = hello_init,
-	.getattr	= hello_getattr,
-	.readdir	= hello_readdir,
-	.open		= hello_open,
-	.read		= hello_read,
+static struct fuse_operations stor_oper = {
+	.init       = stor_init,
+	.destroy	= stor_destroy,
+	.getattr	= stor_getattr,
+	.readdir	= stor_readdir,
+	.open		= stor_open,
+	.read		= stor_read,
 };
 
 static void show_help(const char *progname)
 {
 	printf("usage: %s [options] <mountpoint>\n\n", progname);
 	printf("File-system specific options:\n"
-	       "    --name=<s>          Name of the \"hello\" file\n"
-	       "                        (default: \"hello\")\n"
-	       "    --contents=<s>      Contents \"hello\" file\n"
+	       "    --name=<s>          Name of the \"stor\" file\n"
+	       "                        (default: \"stor\")\n"
+	       "    --contents=<s>      Contents \"stor\" file\n"
 	       "                        (default \"Hello, World!\\n\")\n"
 	       "\n");
 }
@@ -153,26 +140,17 @@ int main(int argc, char *argv[])
 {
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
-	/* Set defaults -- we have to use strdup so that
-	   fuse_opt_parse can free the defaults if other
-	   values are specified */
-	options.filename = strdup("test");
-	options.contents = strdup("tuyunshan!\n");
+	options.filename = strdup("README.txt");
+	options.contents = strdup("Author:ystu\n");
 
-	/* Parse options */
 	if (fuse_opt_parse(&args, &options, option_spec, NULL) == -1)
 		return 1;
 
-	/* When --help is specified, first print our own file-system
-	   specific help text, then signal fuse_main to show
-	   additional help (by adding `--help` to the options again)
-	   without usage: line (by setting argv[0] to the empty
-	   string) */
 	if (options.show_help) {
 		show_help(argv[0]);
 		assert(fuse_opt_add_arg(&args, "--help") == 0);
 		args.argv[0] = (char*) "";
 	}
 
-	return fuse_main(args.argc, args.argv, &hello_oper, NULL);
+	return fuse_main(args.argc, args.argv, &stor_oper, NULL);
 }
