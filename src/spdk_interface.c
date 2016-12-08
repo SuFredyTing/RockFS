@@ -111,9 +111,11 @@ spdk_read_and_write(char *buf, int start, int length, int mode)
 		
 		sequence.is_completed = 0;
 		sequence.ns_entry = ns_entry;
-		
+
+		sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
+
 		if (mode == WRITE) {
-            sequence.buf = buf;
+			memcpy(sequence.buf, buf, sizeof(char) * length * 4096);
 			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
 							start, 
 							length, 
@@ -123,7 +125,7 @@ spdk_read_and_write(char *buf, int start, int length, int mode)
 				exit(1);
 			}
 		} else if (mode == READ ) {
-			sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
+			//sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
 			rc = spdk_nvme_ns_cmd_read(ns_entry->ns, ns_entry->qpair, sequence.buf,
 						   start,
 						   length,
@@ -140,12 +142,14 @@ spdk_read_and_write(char *buf, int start, int length, int mode)
 	    while (!sequence.is_completed) {
         	spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
 		}
-	
-		printf("sequence.buf=%s\n", sequence.buf);
-		memcpy(buf, sequence.buf, sizeof(char) * length * 4096);
-		printf("*buf=%s\n",buf);
-	
-    	spdk_free(sequence.buf);
+		
+		if (mode == READ) {
+			//printf("sequence.buf=%s\n", sequence.buf);
+			memcpy(buf, sequence.buf, sizeof(char) * length * 4096);
+			//printf("*buf=%s\n",buf);
+		}
+    	
+		spdk_free(sequence.buf);
 		
 		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
 		ns_entry = ns_entry->next;
