@@ -15,7 +15,7 @@
 void register_ns(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns);
 void read_complete(void *arg, const struct spdk_nvme_cpl *completion);
 void write_complete(void *arg, const struct spdk_nvme_cpl *completion);
-int  spdk_read_and_write(char *buf, int start, int length, int mode);
+int  spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode);
 bool probe_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
        			     struct spdk_nvme_ctrlr_opts *opts);
 void attach_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,

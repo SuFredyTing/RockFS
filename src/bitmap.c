@@ -6,24 +6,24 @@
 #include "spdk_interface.h"
 
 void 
-clear_block(int addr)
+clear_block(unsigned long addr)
 {
 	char *buf = (char *)malloc(BLOCK_SIZE);
 	int i;
 	
-	spdk_read_and_write(buf, addr, 1, 1);
+	spdk_read_and_write(buf, addr, 1, READ);
 
 	for (i = 0; i < BLOCK_SIZE; i++) {
 		buf[i] &= 0x00;
 	}
 
-	spdk_read_and_write(buf, addr, 1, 2);
+	spdk_read_and_write(buf, addr, 1, WRITE);
 	
 	free(buf);
 } 
 
 bool
-set_bit(int nr, int addr, int flag)
+set_bit(unsigned long nr, unsigned long addr, int flag)
 {
 	char *buf = (char *)malloc(BLOCK_SIZE);
     int tmp = 1;
@@ -32,7 +32,7 @@ set_bit(int nr, int addr, int flag)
 	z = nr / 8;
 	r = nr % 8;
 
-	spdk_read_and_write(buf, addr, 1, 1);
+	spdk_read_and_write(buf, addr, 1, READ);
 	
 	tmp = tmp << r;
 	if (flag == 1) {
@@ -40,10 +40,12 @@ set_bit(int nr, int addr, int flag)
 	} else if (flag == 0) {
 		buf[z] &= ~(char)tmp;
 	} else {
+		fprintf(stderr,"The flag in the function of set_ bit() is error!\n");
+		free(buf);
 		return false;
 	}
 
-	spdk_read_and_write(buf, addr, 1, 2);
+	spdk_read_and_write(buf, addr, 1, WRITE);
 	
 	free(buf);
 	
@@ -51,7 +53,7 @@ set_bit(int nr, int addr, int flag)
 }
 
 void 
-get_bit(int nr, int addr, int *res)
+get_bit(unsigned long nr, unsigned long addr, int *res)
 {
 	char *buf = (char *)malloc(BLOCK_SIZE);
     int tmp = 1;
@@ -60,7 +62,7 @@ get_bit(int nr, int addr, int *res)
 	z = nr / 8;
 	r = nr % 8;
 
-	spdk_read_and_write(buf, addr, 1, 1);
+	spdk_read_and_write(buf, addr, 1, READ);
 	
 	tmp = tmp << r;
 	tmp = (int)(buf[z] & (char)tmp);
@@ -70,13 +72,14 @@ get_bit(int nr, int addr, int *res)
 }
 
 void
-find_first_zero(int addr, int *nr)
+find_first_zero(unsigned long addr, unsigned long *nr)
 {
 	char *buf = (char *)malloc(BLOCK_SIZE);
 	int tmp;
-	int i, j, res, flag = 0;
+	int res, flag = 0;
+	unsigned long i, j;
 	
-	spdk_read_and_write(buf, addr, 1, 1);
+	spdk_read_and_write(buf, addr, 1, READ);
    
 	for (i = 0; i < BLOCK_SIZE; i++) {
 		for (j = 0; j < 8; j++) {
@@ -95,6 +98,68 @@ find_first_zero(int addr, int *nr)
 	(*nr) = i * 8 + j;
 
 	free(buf);
+}
+
+bool
+set_bitmap(unsigned long num, int block_type, int flag)
+{
+	unsigned long block_num, inter_num;
+	
+	block_num = num / (BLOCK_SIZE * 8);
+	inter_num = num % (BLOCK_SIZE * 8);	
+	
+	if (block_type == INODE_BITMAP) {
+		
+		block_num += INODE_BLOCK_BITMAP_START;
+		if (block_num >= LOGIC_BLOCK_BITMAP_START) {
+			fprintf(stderr, "The number of inode block bitmap overflows!");
+			return false;
+		}
+			
+	} else if (block_type == LOGIC_BITMAP) {
+		
+		block_num += LOGIC_BLOCK_BITMAP_START;
+		if (block_num >= INODE_BLOCK_START) {
+			fprintf(stderr, "The number of logic block bitmap overflows!");
+			return false;
+		}
+
+	}
+
+	set_bit(inter_num, block_num, flag);
+	
+	return true;
+}
+
+bool
+get_bitmap(unsigned long num, int block_type, int *res)
+{
+	unsigned long block_num, inter_num;
+	
+	block_num = num / (BLOCK_SIZE * 8);
+	inter_num = num % (BLOCK_SIZE * 8);	
+	
+	if (block_type == INODE_BITMAP) {
+		
+		block_num += INODE_BLOCK_BITMAP_START;
+		if (block_num >= LOGIC_BLOCK_BITMAP_START) {
+			fprintf(stderr, "The number of inode block bitmap overflows!");
+			return false;
+		}
+			
+	} else if (block_type == LOGIC_BITMAP) {
+		
+		block_num += LOGIC_BLOCK_BITMAP_START;
+		if (block_num >= INODE_BLOCK_START) {
+			fprintf(stderr, "The number of logic block bitmap overflows!");
+			return false;
+		}
+
+	}
+
+	get_bit(inter_num, block_num, res);
+	
+	return true;
 }
 
 /*

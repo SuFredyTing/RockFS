@@ -91,7 +91,7 @@ write_complete(void *arg, const struct spdk_nvme_cpl *completion)
 }
 
 int 
-spdk_read_and_write(char *buf, int start, int length, int mode)
+spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode)
 {
 	struct ns_entry         *ns_entry;
 	struct storage_sequence sequence;

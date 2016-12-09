@@ -4,9 +4,11 @@
 #include "common.h"
 #include "spdk_interface.h"
 
-void clear_block(int addr);
-bool set_bit(int nr, int addr, int flag);
-void get_bit(int nr, int addr, int *res);
-void find_first_zero(int addr, int *nr);
+void clear_block(unsigned long addr);
+bool set_bit(unsigned long nr, unsigned long addr, int flag);
+void get_bit(unsigned long nr, unsigned long addr, int *res);
+void find_first_zero(unsigned long addr, unsigned long *nr);
+bool set_bitmap(unsigned long num, int block_type, int flag);
+bool get_bitmap(unsigned long num, int block_type, int *res);
 
 #endif //BITMAP_H

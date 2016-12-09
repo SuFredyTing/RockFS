@@ -2,6 +2,11 @@
 #define COMMON_H
 
 #define BLOCK_SIZE					4096
+#define INODE_SIZE					128
+
+#define INODE_NUM_IN_BLOCK			32
+
+#define NAME_LEN					16
 
 #define LOGIC_BLOCK_NUM             4000000000
 #define SUPER_BLOCK_NO              0
@@ -11,5 +16,7 @@
 #define DATA_BLOCK_START            2097152
 
 enum RW_MODE { READ = 1, WRITE };
+enum BLOCK_TYPE { INODE_BITMAP = 10, LOGIC_BITMAP };
+enum FILE_INODE_MODE { DIR_INODE = 40, COMMON_INODE };
 
 #endif  //COMMON_H
