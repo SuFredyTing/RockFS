@@ -4,6 +4,7 @@
 #include "common.h"
 #include "bitmap.h"
 #include "spdk_interface.h"
+#include "inode_block.h"
 
 // 磁盘上的索引节点(i 节点)数据结构。
 struct d_inode
@@ -54,7 +55,7 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 		return false;
 	}
 
-	spdk_read_and_write(buf, block_num, 1, READ);
+	spdk_read_and_write((char *)buf, block_num, 1, READ);
 	
 	location = (inter_num * INODE_SIZE) / 8;
 
@@ -95,7 +96,7 @@ set_inode(unsigned long inode_num, struct d_inode *t_inode)
 		return false;
 	}
 	
-	spdk_read_and_write(buf, block_num, 1, READ);	
+	spdk_read_and_write((char *)buf, block_num, 1, READ);	
 
 	location = (inter_num * INODE_SIZE) / 8;
 	
@@ -110,7 +111,7 @@ set_inode(unsigned long inode_num, struct d_inode *t_inode)
 		buf[location + 6 + i] = t_inode->i_zone[i];
 	}
 
-	spdk_read_and_write(buf, block_num, 1, WRITE);
+	spdk_read_and_write((char *)buf, block_num, 1, WRITE);
 	set_bitmap(inode_num, INODE_BITMAP, 1);
 
 	/*tmp = (char *)buf;
@@ -129,6 +130,14 @@ bool
 del_inode(unsigned long inode_num)
 {
 	set_bitmap(inode_num, INODE_BITMAP, 0);
+	return true;
+}
+
+bool
+find_null_inode_num(unsigned long *inode_num)
+{
+	find_bitmap_first_zero(INODE_BITMAP, inode_num);	
+
 	return true;
 }
 

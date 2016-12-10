@@ -71,7 +71,7 @@ get_bit(unsigned long nr, unsigned long addr, int *res)
 	free(buf);
 }
 
-void
+bool
 find_first_zero(unsigned long addr, unsigned long *nr)
 {
 	char *buf = (char *)malloc(BLOCK_SIZE);
@@ -95,9 +95,15 @@ find_first_zero(unsigned long addr, unsigned long *nr)
 			break;
 	}
 	
+	if ( flag == 0) {
+		free(buf);
+		return false;
+	}
+
 	(*nr) = i * 8 + j;
 
 	free(buf);
+	return true;
 }
 
 bool
@@ -159,6 +165,41 @@ get_bitmap(unsigned long num, int block_type, int *res)
 
 	get_bit(inter_num, block_num, res);
 	
+	return true;
+}
+
+bool
+find_bitmap_first_zero(int block_type, unsigned long *num)
+{
+    unsigned long block_num;
+
+	if (block_type == INODE_BITMAP) {
+		
+		block_num = INODE_BLOCK_BITMAP_START;
+		
+		while ( (block_num < LOGIC_BLOCK_BITMAP_START) && (!find_first_zero(block_num, num)) ) {
+			block_num++;
+		}
+
+		if ( block_num == LOGIC_BLOCK_BITMAP_START ) {
+			fprintf(stderr,"All of inode block bitmap have been consumed!");
+			return false;
+		}
+
+    } else if (block_type == LOGIC_BITMAP) {
+
+		block_num = LOGIC_BLOCK_BITMAP_START;
+
+		while ( (block_num < INODE_BLOCK_START) && (!find_first_zero(block_num, num)) ) {
+			block_num++;
+		}
+
+		if (block_num == INODE_BLOCK_START) {
+			fprintf(stderr, "All of logic block bitmap have been consumed!");
+            return false;
+        }
+	}
+
 	return true;
 }
 

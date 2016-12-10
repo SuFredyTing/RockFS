@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
+#include "spdk_interface.h"
 #include "super_block.h"
 #include "common.h"
-#include "spdk_interface.h"
 
 struct nvme_super_block {
 	unsigned long s_ninodes;		 // 节点数。
@@ -23,7 +23,7 @@ read_super_block(struct nvme_super_block *s_block)
 	char *buf = (char *)malloc(BLOCK_SIZE);
 	unsigned long *tmp;
 
-	int i;
+	//int i;
 	
 	spdk_read_and_write(buf, SUPER_BLOCK_NO, 1,	1);
 
@@ -53,7 +53,7 @@ write_super_block(struct nvme_super_block *s_block)
 	unsigned long *tmp = (unsigned long *)malloc(BLOCK_SIZE);
 	char *buf;
 
-	int i;
+	//int i;
 
 	tmp[0] = s_block->s_ninodes;		
 	tmp[1] = s_block->s_nzones;

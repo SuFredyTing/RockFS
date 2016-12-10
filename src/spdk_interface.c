@@ -155,6 +155,7 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	}
 
 	//cleanup();
+	return 0;
 }
 
 /*

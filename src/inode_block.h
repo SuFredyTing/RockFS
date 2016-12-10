@@ -9,5 +9,6 @@ bool get_inode_location(unsigned long inode_num, unsigned long *block_num,
 bool get_inode(unsigned long inode_num, struct d_inode *t_inode);
 bool set_inode(unsigned long inode_num, struct d_inode *t_inode);
 bool del_inode(unsigned long inode_num);
+bool find_null_inode_num(unsigned long * inode_num);
 
 #endif  //INODE_BLOCK_H
