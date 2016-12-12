@@ -6,26 +6,6 @@
 #include "spdk_interface.h"
 #include "inode_block.h"
 
-// 磁盘上的索引节点(i 节点)数据结构。
-struct d_inode
-{
-	unsigned long i_mode;		// 文件类型和属性(rwx 位)。
-	unsigned long i_uid;		// 用户id（文件拥有者标识符）。
-	unsigned long i_size;		// 文件大小（字节数）。
-	unsigned long i_time;		// 修改时间（自1970.1.1:0 算起，秒）。
-	unsigned long i_gid;		// 组id(文件拥有者所在的组)。
-	unsigned long i_nlinks;		// 链接数（多少个文件目录项指向该i 节点）。
-	unsigned long i_zone[10];	// 直接(0-6)、间接(7)或双重间接(8)逻辑块号。
-								// zone 是区的意思，可译成区段，或逻辑块。
-};
-
-// 文件目录项结构。
-struct dir_entry
-{
-	unsigned long inode;		// i 节点。
-	char name[NAME_LEN];		// 文件名。
-};
-
 bool 
 get_inode_location(unsigned long inode_num, unsigned long *block_num, 
 				   unsigned long *inter_num)
@@ -48,7 +28,7 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 	unsigned long *buf = (unsigned long *)malloc(BLOCK_SIZE);
 	int location, i;
 
-	//char *tmp;
+	char *tmp;
 
 	if ( !get_inode_location(inode_num, &block_num, &inter_num) ) {
 		free(buf);
@@ -70,14 +50,14 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 		t_inode->i_zone[i] = buf[location + 6 + i];
 	}
 	
-	/*tmp = (char *)buf;
-	printf("read word:\n");
+	tmp = (char *)buf;
+	printf("read %lu word:\n", block_num);
     for (i = 0; i < BLOCK_SIZE; i++) {
         //buf[i] = 0x00;
         printf("%02X ", tmp[i]);
     }
     printf("\nend!\n");
-	*/
+	
 	free(buf);
 	return true;
 }
@@ -115,7 +95,7 @@ set_inode(unsigned long inode_num, struct d_inode *t_inode)
 	set_bitmap(inode_num, INODE_BITMAP, 1);
 
 	/*tmp = (char *)buf;
-	printf("write word:\n");
+	printf("write %lu word:\n", block_num);
     for (i = 0; i < BLOCK_SIZE; i++) {
 	    //tmp[i] = 0x00;
 	    printf("%02X ", tmp[i]);
@@ -136,7 +116,9 @@ del_inode(unsigned long inode_num)
 bool
 find_null_inode_num(unsigned long *inode_num)
 {
-	find_bitmap_first_zero(INODE_BITMAP, inode_num);	
+	if (!find_bitmap_first_zero(INODE_BITMAP, inode_num)) {
+		return false;
+	}
 
 	return true;
 }

@@ -3,10 +3,13 @@
 
 #define BLOCK_SIZE					4096
 #define INODE_SIZE					128
+#define DIR_ENTRY_SIZE				32
 
 #define INODE_NUM_IN_BLOCK			32
+#define DIR_ENTRAY_NUM_IN_BLOCK		128
 
-#define NAME_LEN					16
+#define NAME_LEN					24
+#define ROOT_INFO                   1
 
 #define LOGIC_BLOCK_NUM             4000000000
 #define SUPER_BLOCK_NO              0
