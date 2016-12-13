@@ -9,6 +9,12 @@
 #include "namei.h"
 #include "spdk_interface.h"
 
+static inline unsigned char 
+get_fs_byte(const char *addr)
+{
+	return *addr;
+}
+
 static bool
 get_dir_block_list(struct d_inode *dir, unsigned long *dir_block, int size)
 {
@@ -73,7 +79,7 @@ get_dir_block_list(struct d_inode *dir, unsigned long *dir_block, int size)
 	return true;
 }
 
-bool
+static bool
 add_dir_block_to_list(struct d_inode *dir, unsigned long data_num, int size)
 {
 	int z, r;
@@ -215,13 +221,42 @@ add_dir_entry(struct d_inode *dir, struct dir_entry *dir_item)
 	return true;
 }
 
-/*
-void
-get_dir()
-{
 
+bool
+get_dir(struct d_inode *dir, const char *pathname, struct d_inode *inode)
+{	
+	char c;
+	const char *thisname;
+	int namelen;
+	struct dir_entry de;
+	
+	if ((c = get_fs_byte(pathname) != '/')) {
+		fprintf(stderr, "The pathname error!\n");
+		return false;
+	}
+	
+	pathname++;
+	memcpy(inode, dir, INODE_SIZE);
+	while (1) {
+		thisname = pathname;
+		for (namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/') && (c != '\0'); namelen++)
+			/* nothing, not error! */;
+		if ( namelen !=0 ) {
+			if (!find_dir_entry(inode, thisname, namelen, &de)) {
+				fprintf(stderr, "Not find %s!", thisname);
+				return false;
+			}	
+			//printf("inode = %lu\n", de.inode);
+			//printf("name  = %s\n", de.name);
+			get_inode(de.inode, inode);
+		}	
+		if (c == '\0') {
+			return true;
+		}			
+	}	
 }
 
+/*
 void
 dir_namei()
 {
@@ -270,28 +305,33 @@ int
 main(int argc, char *argv[])
 {
 	struct d_inode dir;
-	struct dir_entry dir_item;
+	struct d_inode inode;
+	//struct dir_entry dir_item;
 	
-	//get_inode(ROOT_INFO, &dir);
-	find_null_data_block_num(&dir_item.inode);
-	strcpy(dir_item.name, "hello_world");
 	spdk_init();
+	//get_inode(ROOT_INFO, &dir);
+	//find_null_inode_num(&dir_item.inode);
+	//strcpy(dir_item.name, "hello1");
+	dir.i_size = 100;
+	set_inode(2, &dir);
 
 	get_inode(ROOT_INFO, &dir);
-	printf("dir_item.inode = %lu\n", dir_item.inode);
+	//printf("dir_item.inode = %lu\n", dir_item.inode);
 	//printf("dir->zone[0]   = %lu\n", dir.i_zone[0]);    
 
 	//clear_block(4096);
 	//set_bitmap(0, LOGIC_BITMAP, 1);
 	//clear_block(65537);	
 	//find_dir_entry(&dir, ".", 1, &dir_item);
-	add_dir_entry(&dir, &dir_item);
-	printf("dir->zone[0]   = %lu\n", dir.i_zone[0]);
-	printf("dir_item.inode = %lu\n", dir_item.inode);
-	printf("dir_item.name  = %s\n", dir_item.name);
-	set_inode(ROOT_INFO, &dir);	
+	//add_dir_entry(&dir, &dir_item);
+	//printf("dir->zone[0]   = %lu\n", dir.i_zone[0]);
+	get_dir(&dir, "/hello", &inode);
+	//printf("dir_item.inode = %lu\n", dir_item.inode);
+	//printf("dir_item.name  = %s\n", dir_item.name);
+	printf("inode.i_size = %lu\n", inode.i_size);
+	//set_inode(ROOT_INFO, &dir);	
 
 	spdk_cleanup();
 	return 0;
-}*/
-
+}
+*/

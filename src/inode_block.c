@@ -28,7 +28,7 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 	unsigned long *buf = (unsigned long *)malloc(BLOCK_SIZE);
 	int location, i;
 
-	char *tmp;
+	//char *tmp;
 
 	if ( !get_inode_location(inode_num, &block_num, &inter_num) ) {
 		free(buf);
@@ -50,14 +50,14 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 		t_inode->i_zone[i] = buf[location + 6 + i];
 	}
 	
-	tmp = (char *)buf;
+	/*tmp = (char *)buf;
 	printf("read %lu word:\n", block_num);
     for (i = 0; i < BLOCK_SIZE; i++) {
         //buf[i] = 0x00;
         printf("%02X ", tmp[i]);
     }
     printf("\nend!\n");
-	
+	*/
 	free(buf);
 	return true;
 }
