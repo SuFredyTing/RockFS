@@ -44,7 +44,7 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 	t_inode->i_size	  = buf[location + 2];
 	t_inode->i_time   = buf[location + 3];
 	t_inode->i_gid	  = buf[location + 4];
-	t_inode->i_nlinks = buf[location + 5];
+	t_inode->i_cinode = buf[location + 5];
 	
 	for (i = 0; i < 10; i++) {
 		t_inode->i_zone[i] = buf[location + 6 + i];
@@ -85,7 +85,7 @@ set_inode(unsigned long inode_num, struct d_inode *t_inode)
     buf[location + 2] = t_inode->i_size;	 
     buf[location + 3] = t_inode->i_time;  
 	buf[location + 4] = t_inode->i_gid;	 
-	buf[location + 5] = t_inode->i_nlinks;
+	buf[location + 5] = t_inode->i_cinode;
 
 	for (i = 0; i < 10; i++) {
 		buf[location + 6 + i] = t_inode->i_zone[i];
@@ -138,7 +138,7 @@ main()
     t_inode.i_size   = 3;
     t_inode.i_time   = 4;
     t_inode.i_gid    = 5;
-    t_inode.i_nlinks = 6;
+    t_inode.i_cinode = 6;
 
     for (i = 0; i < 10; i++) {
         t_inode.i_zone[i] = i;
@@ -156,7 +156,7 @@ main()
 	printf("t_inode.i_size   = %lu\n", t_inode.i_size  );
 	printf("t_inode.i_time   = %lu\n", t_inode.i_time  );
 	printf("t_inode.i_gid    = %lu\n", t_inode.i_gid   );
-	printf("t_inode.i_nlinks = %lu\n", t_inode.i_nlinks);
+	printf("t_inode.i_cinode = %lu\n", t_inode.i_cinode);
 	for (i = 0; i < 10; i++) {
 		printf("t_inode->i_zone[%d]= %lu\n", i, t_inode.i_zone[i]);
 	}
@@ -172,7 +172,7 @@ main()
 	printf("t_inode.i_size   = %lu\n", t_inode.i_size  );
 	printf("t_inode.i_time   = %lu\n", t_inode.i_time  );
 	printf("t_inode.i_gid    = %lu\n", t_inode.i_gid   );
-	printf("t_inode.i_nlinks = %lu\n", t_inode.i_nlinks);
+	printf("t_inode.i_cinode = %lu\n", t_inode.i_cinode);
 	for (i = 0; i < 10; i++) {
 		printf("t_inode.i_zone[%d]= %lu\n", i, t_inode.i_zone[i]);
 	}
