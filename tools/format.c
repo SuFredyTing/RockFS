@@ -1,11 +1,18 @@
+#include <stdio.h>
+#include <time.h>
+
 #include "spdk_interface.h"
+#include "inode_block.h"
+#include "namei.h"
 #include "bitmap.h"
 
 int 
 main(int argc, char *argv[1])
 {
 	int choice, i;
-	
+	struct d_inode root;
+	struct dir_entry de;	
+
 	choice = atoi(argv[1]);
 
 	spdk_init();
@@ -36,6 +43,24 @@ main(int argc, char *argv[1])
 	}	
 	set_bitmap(0, INODE_BITMAP, 1);
 	set_bitmap(0, LOGIC_BITMAP, 1);
+	
+	root.i_mode= DIR_INODE;
+	root.i_uid= 1;
+	root.i_size= 0;
+	time((time_t *)&root.i_time);
+	root.i_gid=1;
+	root.i_cinode= 1;
+	
+	for ( i = 0; i < 10; i++) {
+		root.i_zone[i] = 0;
+	}
+
+	de.inode = 1;
+	strcpy((char *)&de.name, ".");
+	add_dir_entry(&root, &de);
+	
+	set_inode(root.i_cinode, &root);	
+
 	spdk_cleanup();
 	return 0;
 }

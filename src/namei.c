@@ -11,13 +11,13 @@
 #include "namei.h"
 #include "spdk_interface.h"
 
-static inline unsigned char 
+unsigned char 
 get_fs_byte(const char *addr)
 {
 	return *addr;
 }
 
-static bool
+bool
 get_dir_block_list(struct d_inode *dir, unsigned long *dir_block, int size)
 {
 	int i, j, k, z, r;
@@ -81,7 +81,7 @@ get_dir_block_list(struct d_inode *dir, unsigned long *dir_block, int size)
 	return true;
 }
 
-static bool
+bool
 add_dir_block_to_list(struct d_inode *dir, unsigned long data_num, int size)
 {
 	int z, r;
@@ -142,7 +142,7 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 	for (i = 0; i < block_num - 1; i++) {
 		read_dir_block(dir_block[i], buf);
 		for (j = 0; j < DIR_ENTRY_SIZE; j++) {
-			if ( 0 == strcmp(buf[j].name, name) ) {
+			if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
 				memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
 				free(dir_block);
 				free(buf);
@@ -153,7 +153,7 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 	
 	read_dir_block(dir_block[i], buf);
 	for (j = 0; j < entry_size_in_block; j++) {
-		if ( 0 == strcmp(buf[j].name, name) ) {
+		if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
 	        memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
     	    free(dir_block);
             free(buf);
@@ -253,9 +253,11 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
     for (i = 0; i < block_num - 1; i++) {
         read_dir_block(dir_block[i], buf);
         for (j = 0; j < DIR_ENTRY_SIZE; j++) {
-            if ( 0 == strcmp(buf[j].name, name) ) {
-                buf[j].inode = 0;
+            if ((0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0)) {
+                del_data_block(buf[j].inode);
+				buf[j].inode = 0;
                 write_dir_block(dir_block[i], buf);
+				dir->i_size -= DIR_ENTRY_SIZE;
 				free(dir_block);
                 free(buf);
                 return true;
@@ -265,9 +267,11 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
 
     read_dir_block(dir_block[i], buf);
     for (j = 0; j < entry_size_in_block; j++) {
-        if ( 0 == strcmp(buf[j].name, name) ) {
+        if ((0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0)) {
+			del_data_block(buf[j].inode);
             buf[j].inode = 0;
 			write_dir_block(dir_block[i], buf);
+			dir->i_size -= DIR_ENTRY_SIZE;
             free(dir_block);
             free(buf);
             return true;
@@ -316,21 +320,22 @@ get_dir(struct d_inode *dir, const char *pathname, struct d_inode *inode)
 }
 
 bool
-dir_namei(const char *pathname, int *namelen, const char *name, struct d_inode *base
+dir_namei(const char *pathname, int *namelen, const char **name, struct d_inode *base
 		, struct d_inode *dir)
 {
 	char c;
-	//const char *basename;
+	const char *basename;
 	
 	if (!(get_dir(base, pathname, dir))) {
 		return false;
 	}
 
-	name = pathname;
+	basename = pathname;
 	while ((c = get_fs_byte(pathname++)))
 		if (c == '/')
-			name = pathname;
-	*namelen = pathname - name - 1;
+			basename = pathname;
+	*namelen = pathname - basename - 1;
+	*name = basename;	
 
 	return true;
 }
@@ -382,11 +387,11 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 {
 	struct d_inode dir;
 	struct dir_entry de;	
-	const char *basename = NULL;
+	const char *basename;
 	int namelen, error;
 
 	get_inode(ROOT_INFO, &dir);
-	if (!dir_namei(pathname, &namelen, basename, &dir, res_inode)) {
+	if (!dir_namei(pathname, &namelen, &basename, &dir, res_inode)) {
 		return -ENOENT;
 	}
 	
@@ -394,7 +399,7 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 		if ((error = new_inode(&de.inode, mode, res_inode->i_cinode))) {
 			return error;
 		}		
-		memcpy(&de.name, basename, NAME_LEN);
+		memcpy(&de.name, basename, namelen);
 		add_dir_entry(res_inode, &de);
 		set_inode(res_inode->i_cinode, res_inode);	
 	} else {
@@ -433,12 +438,12 @@ sys_rmdir(const char *filename)
 {
 	struct d_inode dir, res_inode;
     struct dir_entry de;
-    const char *basename = NULL;
+    const char *basename;
     int namelen;
 	
 	get_inode(ROOT_INFO, &dir);
     
-	if (!dir_namei(filename, &namelen, basename, &dir, &res_inode)) {
+	if (!dir_namei(filename, &namelen, &basename, &dir, &res_inode)) {
         return -ENOENT;
     }
 
@@ -452,11 +457,11 @@ sys_rmdir(const char *filename)
 }
 
 
-/*
+
 int 
 main(int argc, char *argv[])
 {
-	struct d_inode dir;
+/*	struct d_inode dir;
 	struct d_inode inode;
 	//struct dir_entry dir_item;
 	
@@ -485,5 +490,13 @@ main(int argc, char *argv[])
 
 	spdk_cleanup();
 	return 0;
-}
 */
+	spdk_init();
+
+	sys_rmdir("/ystu");		
+	//sys_mkdir("/test");
+
+	spdk_cleanup();
+	return 0;
+}	
+
