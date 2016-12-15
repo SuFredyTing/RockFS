@@ -52,7 +52,7 @@ all: $(APP)
 
 $(TARGET) : $(OBJS) $(SPDK_LIB_FILES) $(ENV_LIBS)
 	$(LINK_C)
-	mv $(TARGET) ../bin/test
+	mv $(TARGET) ../bin/$(TARGET)
 #clean:
 #	$(CLEAN_C) $(APP)
 

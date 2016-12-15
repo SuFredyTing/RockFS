@@ -48,7 +48,7 @@ main(int argc, char *argv[1])
 	root.i_uid= 1;
 	root.i_size= 0;
 	time((time_t *)&root.i_time);
-	root.i_gid=1;
+	root.i_tsize = 0;
 	root.i_cinode= 1;
 	
 	for ( i = 0; i < 10; i++) {

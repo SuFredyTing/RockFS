@@ -220,6 +220,7 @@ file_write(struct d_inode *inode, struct file *filp, char *buf, int count)
 		pos += c;
 		if (pos > inode->i_size) {
 			inode->i_size = pos;
+			inode->i_tsize = pos;
 		}
 		i += c;
 		while (c-- > 0)

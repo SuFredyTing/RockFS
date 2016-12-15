@@ -127,15 +127,15 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 	int i, j;
 
 	if (namelen > NAME_LEN || namelen <= 0) {
-		fprintf(stderr, "The length of filename exceeds the limit(16)!\n");
+		fprintf(stderr, "The length of filename exceeds the limit(24)!\n");
 		free(buf);
 		return false;
 	}
 
 	//round up to an integer
 	entry_num = (dir->i_size + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
-	block_num = (entry_num + DIR_ENTRAY_NUM_IN_BLOCK - 1) / DIR_ENTRAY_NUM_IN_BLOCK;
-	entry_size_in_block = entry_num % DIR_ENTRAY_NUM_IN_BLOCK;
+	block_num = (entry_num + DIR_ENTRY_NUM_IN_BLOCK - 1) / DIR_ENTRY_NUM_IN_BLOCK;
+	entry_size_in_block = entry_num % DIR_ENTRY_NUM_IN_BLOCK;
 
 	dir_block = (unsigned long *)malloc(sizeof(unsigned long) * block_num);	
 
@@ -147,7 +147,7 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 	
 	for (i = 0; i < block_num - 1; i++) {
 		read_dir_block(dir_block[i], buf);
-		for (j = 0; j < DIR_ENTRY_SIZE; j++) {
+		for (j = 0; j < DIR_ENTRY_NUM_IN_BLOCK; j++) {
 			if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
 				memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
 				free(dir_block);
@@ -184,8 +184,8 @@ add_dir_entry(struct d_inode *dir, struct dir_entry *dir_item)
 
 	//round up to an integer
 	entry_num = (dir->i_size + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
-	block_num = (entry_num + DIR_ENTRAY_NUM_IN_BLOCK - 1) / DIR_ENTRAY_NUM_IN_BLOCK;
-	entry_size_in_block = entry_num % DIR_ENTRAY_NUM_IN_BLOCK;
+	block_num = (entry_num + DIR_ENTRY_NUM_IN_BLOCK - 1) / DIR_ENTRY_NUM_IN_BLOCK;
+	entry_size_in_block = entry_num % DIR_ENTRY_NUM_IN_BLOCK;
 	
 	if (entry_size_in_block == 0)
 		block_num++;
@@ -223,6 +223,7 @@ add_dir_entry(struct d_inode *dir, struct dir_entry *dir_item)
 	}
 	
 	dir->i_size += DIR_ENTRY_SIZE;	
+	dir->i_tsize += DIR_ENTRY_SIZE;
 
 	free(dir_block);
 	free(buf);
@@ -238,15 +239,15 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
     int i, j;
 
     if (namelen > NAME_LEN || namelen <= 0) {
-        fprintf(stderr, "The length of filename exceeds the limit(16)!\n");
+        fprintf(stderr, "The length of filename exceeds the limit(24)!\n");
         free(buf);
         return false;
     }
 
     //round up to an integer
     entry_num = (dir->i_size + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
-    block_num = (entry_num + DIR_ENTRAY_NUM_IN_BLOCK - 1) / DIR_ENTRAY_NUM_IN_BLOCK;
-    entry_size_in_block = entry_num % DIR_ENTRAY_NUM_IN_BLOCK;
+    block_num = (entry_num + DIR_ENTRY_NUM_IN_BLOCK - 1) / DIR_ENTRY_NUM_IN_BLOCK;
+    entry_size_in_block = entry_num % DIR_ENTRY_NUM_IN_BLOCK;
 
     dir_block = (unsigned long *)malloc(sizeof(unsigned long) * block_num);
 
@@ -258,12 +259,12 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
 
     for (i = 0; i < block_num - 1; i++) {
         read_dir_block(dir_block[i], buf);
-        for (j = 0; j < DIR_ENTRY_SIZE; j++) {
+        for (j = 0; j < DIR_ENTRY_NUM_IN_BLOCK; j++) {
             if ((0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0)) {
                 del_data_block(buf[j].inode);
 				buf[j].inode = 0;
                 write_dir_block(dir_block[i], buf);
-				dir->i_size -= DIR_ENTRY_SIZE;
+				dir->i_tsize -= DIR_ENTRY_SIZE;
 				free(dir_block);
                 free(buf);
                 return true;
@@ -277,7 +278,7 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
 			del_data_block(buf[j].inode);
             buf[j].inode = 0;
 			write_dir_block(dir_block[i], buf);
-			dir->i_size -= DIR_ENTRY_SIZE;
+			dir->i_tsize -= DIR_ENTRY_SIZE;
             free(dir_block);
             free(buf);
             return true;
@@ -289,6 +290,64 @@ rm_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_entr
     free(buf);
 
 	return false;
+}
+
+bool
+get_dir_entry_list(struct d_inode *dir, char (*dir_list)[NAME_LEN])
+{
+	struct dir_entry *buf = (struct dir_entry *)malloc(BLOCK_SIZE);
+    unsigned long *dir_block;
+    int entry_num, block_num, entry_size_in_block;
+    int i, j, k;
+
+	//t_entry_num = (dir->i_tsize + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
+	entry_num = (dir->i_size + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
+    block_num = (entry_num + DIR_ENTRY_NUM_IN_BLOCK - 1) / DIR_ENTRY_NUM_IN_BLOCK;
+    entry_size_in_block = entry_num % DIR_ENTRY_NUM_IN_BLOCK;
+
+    dir_block = (unsigned long *)malloc(sizeof(unsigned long) * block_num);
+
+    if ( !get_dir_block_list(dir, dir_block, block_num) ) {
+        free(dir_block);
+        free(buf);
+        return false;
+    }
+
+    for (i = k = 0; i < block_num - 1; i++) {
+        read_dir_block(dir_block[i], buf);
+        for (j = 0; j < DIR_ENTRY_NUM_IN_BLOCK; j++) {
+	        if (buf[j].inode != 0){
+				memcpy(dir_list[k], &buf[j].name, NAME_LEN);
+				k++;
+			}	
+			/*if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
+                memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
+                free(dir_block);
+                free(buf);
+                return true;
+            }*/
+        }
+    }
+
+    read_dir_block(dir_block[i], buf);
+    for (j = 0; j < entry_size_in_block; j++) {
+        if (buf[j].inode != 0){
+			memcpy(dir_list[k], &buf[j].name, NAME_LEN);
+			k++;
+		}
+		/*if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
+            memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
+            free(dir_block);
+            free(buf);
+            return true;
+        }*/
+    }
+
+    //fprintf(stderr," Not find %s !\n", name);
+    free(dir_block);
+    free(buf);
+
+    return true;
 }
 
 bool
@@ -367,7 +426,7 @@ new_inode(unsigned long *inode_num, int mode, unsigned long parent_inode_num)
 	t_inode.i_uid	 = 1;
 	t_inode.i_size	 = 0;
 	time((time_t *)&t_inode.i_time);
-	t_inode.i_gid	 = 1;
+	t_inode.i_tsize	 = 0;
 	t_inode.i_cinode = *inode_num;
 	
 	for (i = 0; i < 10; i++) {
@@ -406,12 +465,19 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 			return error;
 		}		
 		memcpy(&de.name, basename, namelen);
+		if(namelen < NAME_LEN)
+			de.name[namelen] = '\0';
 		add_dir_entry(res_inode, &de);
 		set_inode(res_inode->i_cinode, res_inode);	
 	} else {
-		if (!find_dir_entry(res_inode, basename, namelen, &de))
-			return -ENOENT;
-		get_inode(de.inode, res_inode);
+		if (namelen != 0 && (strncmp("README.txt",basename, namelen) != 0)){
+			if (!find_dir_entry(res_inode, basename, namelen, &de))
+				return -ENOENT;
+			get_inode(de.inode, res_inode);
+		} else if (namelen != 0){
+			res_inode->i_mode = COMMON_INODE;
+			res_inode->i_tsize = 12;
+		}
 	}
 	
 	return 0;
@@ -462,11 +528,26 @@ sys_rmdir(const char *filename)
 	return 0;	
 }
 
-
-
-int 
-main(int argc, char *argv[])
+int
+get_dir_list(const char *filename, char (*dir_list)[NAME_LEN], int *size)
 {
+	struct d_inode dir;
+	//int entry_num;	
+
+	if (open_namei(filename, O_RDWR, DIR_INODE, &dir))
+		return -ENOENT;
+	
+	*size = (dir.i_tsize + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
+	dir_list = (char (*)[NAME_LEN])malloc((*size) * NAME_LEN * sizeof(char));
+
+	if (!get_dir_entry_list(&dir, dir_list))
+		return -99;
+	return 0;
+}
+
+//int 
+//main(int argc, char *argv[])
+//{
 /*	struct d_inode dir;
 	struct d_inode inode;
 	//struct dir_entry dir_item;
@@ -474,7 +555,7 @@ main(int argc, char *argv[])
 	spdk_init();
 	//get_inode(ROOT_INFO, &dir);
 	//find_null_inode_num(&dir_item.inode);
-	//strcpy(dir_item.name, "hello1");
+	//strcpquiy(dir_item.name, "hello1");
 	dir.i_size = 100;
 	set_inode(2, &dir);
 
@@ -497,12 +578,14 @@ main(int argc, char *argv[])
 	spdk_cleanup();
 	return 0;
 */
-	spdk_init();
+//	spdk_init();
 
-	sys_rmdir("/ystu");		
-	//sys_mkdir("/test");
+//	sys_mkdir("/ystu");
+//	sys_rmdir("/ystu");		
 
-	spdk_cleanup();
-	return 0;
-}	
+//	sys_mkdir("/test");
+
+//	spdk_cleanup();
+//	return 0;
+//}	
 

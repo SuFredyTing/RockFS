@@ -91,7 +91,7 @@ write_complete(void *arg, const struct spdk_nvme_cpl *completion)
 }
 
 int 
-spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode)
+spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 {
 	struct ns_entry         *ns_entry;
 	struct storage_sequence sequence;
@@ -111,10 +111,10 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 		sequence.is_completed = 0;
 		sequence.ns_entry = ns_entry;
 
-		sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
+		sequence.buf = spdk_zmalloc(length * 512, length * 512, NULL);
 
 		if (mode == WRITE) {
-			memcpy(sequence.buf, buf, sizeof(char) * length * 4096);
+			memcpy(sequence.buf, buf, sizeof(char) * length * 512);
 			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
 							start, 
 							length, 
@@ -125,6 +125,7 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 			}
 		} else if (mode == READ ) {
 			//sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
+			printf("start = %lu\n", start);
 			rc = spdk_nvme_ns_cmd_read(ns_entry->ns, ns_entry->qpair, sequence.buf,
 						   start,
 						   length,
@@ -133,6 +134,7 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 				fprintf(stderr, "starting read I/O failed\n");
 				exit(1);
 			}
+			printf("testing!\n");
 //			printf("sequence.buf=%s\n", sequence.buf);
 //			memcpy(*buf, sequence.buf, sizeof(char) * 4096);
 //			printf("*buf=%s\n",*buf);
@@ -141,10 +143,10 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	    while (!sequence.is_completed) {
         	spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
 		}
-		
+		printf("tystesting\n");
 		if (mode == READ) {
 			//printf("sequence.buf=%s\n", sequence.buf);
-			memcpy(buf, sequence.buf, sizeof(char) * length * 4096);
+			memcpy(buf, sequence.buf, sizeof(char) * length * 512);
 			//printf("*buf=%s\n",buf);
 		}
     	
@@ -152,10 +154,22 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 		
 		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
 		ns_entry = ns_entry->next;
+		printf("ffffffffffffffffffffffff\n");
 	}
 
 	//cleanup();
 	return 0;
+}
+
+int
+spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode)
+{
+	unsigned long s = start * 8;
+	unsigned long l = length * 8;
+
+	printf("s = %lu\nl = %lu\n", s, l);		
+
+	return spdk_rw(buf, start, length, mode);
 }
 
 /*

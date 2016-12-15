@@ -2,6 +2,8 @@
 
 #include <config.h>
 
+#include "common.h"
+
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,13 +12,15 @@
 #include <stddef.h>
 #include <assert.h>
 
+#include "spdk_interface.h"
+#include "namei.h"
 /*
- * Command line options
- *
- * We can't set default values for the char* fields here because
- * fuse_opt_parse would attempt to free() them when the user specifies
- * different values on the command line.
- */
+  * Command line options
+  *
+  * We can't set default values for the char* fields here because
+  * fuse_opt_parse would attempt to free() them when the user specifies
+  * different values on the command line.
+  */
 static struct options {
 	const char *filename;
 	const char *contents;
@@ -53,9 +57,10 @@ static int stor_getattr(const char *path, struct stat *stbuf,
 {
 	(void) fi;
 	int res = 0;
+	struct d_inode dir;	
 
 	memset(stbuf, 0, sizeof(struct stat));
-	if (strcmp(path, "/") == 0) {
+	/*if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
 	} else if (strcmp(path+1, options.filename) == 0) {
@@ -63,7 +68,16 @@ static int stor_getattr(const char *path, struct stat *stbuf,
 		stbuf->st_nlink = 1;
 		stbuf->st_size = strlen(options.contents);
 	} else
-		res = -ENOENT;
+		res = -ENOENT;*/
+	if (open_namei(path, O_RDWR, DIR_INODE, &dir))
+		return -ENOENT;
+	if ( dir.i_mode == DIR_INODE) {
+		stbuf->st_mode = S_IFDIR | 0755; 
+	} else if ( dir.i_mode == COMMON_INODE) {
+		stbuf->st_mode = S_IFREG | 0444;
+		stbuf->st_size = dir.i_tsize;	
+	}
+	stbuf->st_nlink = 1;
 
 	return res;
 }
@@ -75,14 +89,49 @@ static int stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) offset;
 	(void) fi;
 	(void) flags;
+	char (*dir_list)[NAME_LEN] ;
+	struct d_inode dir;	
+	int size, i;
 
-	if (strcmp(path, "/") != 0)
+    if (open_namei(path, O_RDWR, DIR_INODE, &dir))
+        return -ENOENT;
+
+    size = (dir.i_tsize + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
+    dir_list = (char (*)[NAME_LEN])malloc(size * NAME_LEN * sizeof(char));
+
+    if (!get_dir_entry_list(&dir, dir_list))
+        return -99;
+	
+	/*if (strcmp(path, "/") != 0)
 		return -ENOENT;
 
 	filler(buf, ".", NULL, 0, 0);
-	filler(buf, "..", NULL, 0, 0);
+	filler(buf, "..", NULL, 0, 0);*/
 	filler(buf, options.filename, NULL, 0, 0);
+	
+	/*if ((error = get_dir_list(path, dir_list, &size))){
+		printf("size = %d\nerror = %d", size, error);
+		return error;
+	}*/
+	
+	for (i = 0; i < size; i++){
+		printf("dir_list[%d] = %s\n", i, dir_list[i]);
+		filler(buf, dir_list[i], NULL, 0, 0); 
+	}
+	free(dir_list);
+	printf("size = %d\n", size);
+	return 0;
+}
 
+static int
+stor_mkdir(const char *path, mode_t mode)
+{
+	int res;
+	
+	res = sys_mkdir(path);
+	//if (res != 0)
+	//	return -errno;
+	
 	return 0;
 }
 
@@ -121,6 +170,7 @@ static struct fuse_operations stor_oper = {
 	.destroy	= stor_destroy,
 	.getattr	= stor_getattr,
 	.readdir	= stor_readdir,
+	.mkdir		= stor_mkdir,
 	.open		= stor_open,
 	.read		= stor_read,
 };

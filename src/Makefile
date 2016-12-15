@@ -11,7 +11,7 @@ OBJS    := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCE)))
   
 #target you can change test to what you want
 #目标文件名，输入任意你想要的执行文件名
-TARGET  := namei #table_stirage
+TARGET  := table_storage
 
 #compile and lib parameter
 #编译参数
@@ -40,7 +40,7 @@ clean :
 	rm -fr *.so
 	rm -fr *.o
 	rm -rf *.d
-	rm -rf ../bin/*
+	rm -rf ../bin/$(TARGET)
  
 veryclean : clean
 	rm -fr $(TARGET)

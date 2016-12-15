@@ -10,7 +10,7 @@ struct d_inode
 	unsigned long i_uid;        // 用户id（文件拥有者标识符）。
 	unsigned long i_size;       // 文件大小（字节数）。
 	unsigned long i_time;       // 修改时间（自1970.1.1:0 算起，秒）。
-	unsigned long i_gid;        // 组id(文件拥有者所在的组)。
+	unsigned long i_tsize;        // 组id(文件拥有者所在的组)。
 	unsigned long i_cinode;     // 链接数（多少个文件目录项指向该i 节点）。
 	unsigned long i_zone[10];   // 直接(0-7)、间接(8)或双重间接(9)逻辑块号。
 								// zone 是区的意思，可译成区段，或逻辑块。

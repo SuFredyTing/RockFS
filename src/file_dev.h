@@ -1,6 +1,8 @@
 #ifndef FILE_DEV_H
 #define FILE_DEV_H
 
+#include <stdbool.h>
+
 struct file {
 	unsigned int 	f_mode;
 	unsigned int	f_flags;

@@ -43,7 +43,7 @@ get_inode(unsigned long inode_num, struct d_inode *t_inode)
 	t_inode->i_uid	  = buf[location + 1];
 	t_inode->i_size	  = buf[location + 2];
 	t_inode->i_time   = buf[location + 3];
-	t_inode->i_gid	  = buf[location + 4];
+	t_inode->i_tsize  = buf[location + 4];
 	t_inode->i_cinode = buf[location + 5];
 	
 	for (i = 0; i < 10; i++) {
@@ -84,7 +84,7 @@ set_inode(unsigned long inode_num, struct d_inode *t_inode)
     buf[location + 1] = t_inode->i_uid;	 
     buf[location + 2] = t_inode->i_size;	 
     buf[location + 3] = t_inode->i_time;  
-	buf[location + 4] = t_inode->i_gid;	 
+	buf[location + 4] = t_inode->i_tsize;	 
 	buf[location + 5] = t_inode->i_cinode;
 
 	for (i = 0; i < 10; i++) {
