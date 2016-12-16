@@ -139,6 +139,11 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 
 	dir_block = (unsigned long *)malloc(sizeof(unsigned long) * block_num);	
 
+	if (entry_num == 0){
+		free(buf);
+		return false;
+	}
+
 	if ( !get_dir_block_list(dir, dir_block, block_num) ) {
 		free(dir_block);
 		free(buf);
@@ -156,9 +161,11 @@ find_dir_entry(struct d_inode *dir, const char *name, int namelen, struct dir_en
 			}
 		}	
 	}
-	
+	printf("entry_num = %d\nentry_size_in_block = %d\n", entry_num, entry_size_in_block);	
+	printf("block_num = %d\ndir_block[i] = %lu\n", block_num, dir_block[i]);
 	read_dir_block(dir_block[i], buf);
 	for (j = 0; j < entry_size_in_block; j++) {
+		//printf("block_num = %d\n dir_block[i] = %lu", block_num, dir_block[i]);
 		if ( (0 == strncmp(buf[j].name, name, namelen)) && (buf[j].inode != 0) ) {
 	        memcpy(dir_item, &buf[j], DIR_ENTRY_SIZE);
     	    free(dir_block);
@@ -455,11 +462,14 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 	const char *basename;
 	int namelen, error;
 
+	printf("pathname = %s\n", pathname);
 	get_inode(ROOT_INFO, &dir);
 	if (!dir_namei(pathname, &namelen, &basename, &dir, res_inode)) {
 		return -ENOENT;
 	}
 	
+	printf("basename = %s\nnamelen = %d\n",basename, namelen);
+	printf("dir.i_cinode = %lu\ndir.i_size = %lu\n", dir.i_cinode, dir.i_size);
 	if (flag == O_CREAT ) {
 		if ((error = new_inode(&de.inode, mode, res_inode->i_cinode))) {
 			return error;
@@ -474,7 +484,10 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 			if (!find_dir_entry(res_inode, basename, namelen, &de))
 				return -ENOENT;
 			get_inode(de.inode, res_inode);
-		} else if (namelen != 0){
+		} /*else if (strncmp(".Trash",basename,6)==0){
+			res_inode->i_mode = COMMON_INODE;
+            res_inode->i_tsize = 0;	
+		}*/ else if (namelen != 0){
 			res_inode->i_mode = COMMON_INODE;
 			res_inode->i_tsize = 12;
 		}

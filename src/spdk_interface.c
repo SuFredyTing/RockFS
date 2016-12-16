@@ -169,7 +169,7 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 
 	printf("s = %lu\nl = %lu\n", s, l);		
 
-	return spdk_rw(buf, start, length, mode);
+	return spdk_rw(buf, s, l, mode);
 }
 
 /*

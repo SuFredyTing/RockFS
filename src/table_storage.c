@@ -129,8 +129,8 @@ stor_mkdir(const char *path, mode_t mode)
 	int res;
 	
 	res = sys_mkdir(path);
-	//if (res != 0)
-	//	return -errno;
+	if (res != 0)
+		return -errno;
 	
 	return 0;
 }
