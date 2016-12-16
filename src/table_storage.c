@@ -13,6 +13,7 @@
 #include <assert.h>
 
 #include "spdk_interface.h"
+#include "file_dev.h"
 #include "namei.h"
 /*
   * Command line options
@@ -37,7 +38,8 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
-static void *stor_init(struct fuse_conn_info *conn,
+static void *
+stor_init(struct fuse_conn_info *conn,
 			struct fuse_config *cfg)
 {
 	(void) conn;
@@ -47,12 +49,14 @@ static void *stor_init(struct fuse_conn_info *conn,
 	return NULL;
 }
 
-static void stor_destroy(void *value)
+static void 
+stor_destroy(void *value)
 {
 	spdk_cleanup();
 }
 
-static int stor_getattr(const char *path, struct stat *stbuf,
+static int 
+stor_getattr(const char *path, struct stat *stbuf,
 			 struct fuse_file_info *fi)
 {
 	(void) fi;
@@ -74,7 +78,7 @@ static int stor_getattr(const char *path, struct stat *stbuf,
 	if ( dir.i_mode == DIR_INODE) {
 		stbuf->st_mode = S_IFDIR | 0755; 
 	} else if ( dir.i_mode == COMMON_INODE) {
-		stbuf->st_mode = S_IFREG | 0444;
+		stbuf->st_mode = S_IFREG | 0666;
 		stbuf->st_size = dir.i_tsize;	
 	}
 	stbuf->st_nlink = 1;
@@ -82,7 +86,8 @@ static int stor_getattr(const char *path, struct stat *stbuf,
 	return res;
 }
 
-static int stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int 
+stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi,
 			 enum fuse_readdir_flags flags)
 {
@@ -135,23 +140,53 @@ stor_mkdir(const char *path, mode_t mode)
 	return 0;
 }
 
-static int stor_open(const char *path, struct fuse_file_info *fi)
+static int 
+stor_open(const char *path, struct fuse_file_info *fi)
 {
-	if (strcmp(path+1, options.filename) != 0)
+	struct d_inode node;
+	/*if (strcmp(path+1, options.filename) != 0)
 		return -ENOENT;
 
 	if ((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
-
+	*/
+	if (open_namei(path, O_RDWR, DIR_INODE, &node) == -ENOENT){
+		sys_mknod(path);
+	} 
+	
 	return 0;
 }
 
-static int stor_read(const char *path, char *buf, size_t size, off_t offset,
-		      struct fuse_file_info *fi)
+static int 
+stor_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+	struct d_inode node;
+	if (open_namei(path, O_RDWR, DIR_INODE, &node) == -ENOENT){
+        sys_mknod(path);
+    }
+	return 0;
+}
+
+static int 
+stor_read(const char *path, char *buf, size_t size, off_t offset,
+	      struct fuse_file_info *fi)
 {
 	size_t len;
 	(void) fi;
-	if(strcmp(path+1, options.filename) != 0)
+	struct d_inode node;
+	struct file filp;
+
+	if (open_namei(path, O_RDWR, DIR_INODE, &node))
+        return -ENOENT;
+
+	filp.f_mode = node.i_mode;
+	filp.f_flags = node.i_mode;
+	filp.f_inode = &node;
+	filp.f_pos = (unsigned long) offset;
+
+	len = file_read(&node, &filp, buf, size);	
+
+	/*if(strcmp(path+1, options.filename) != 0)
 		return -ENOENT;
 
 	len = strlen(options.contents);
@@ -161,8 +196,30 @@ static int stor_read(const char *path, char *buf, size_t size, off_t offset,
 		memcpy(buf, options.contents + offset, size);
 	} else
 		size = 0;
+	*/
+	return len;
+}
 
-	return size;
+static int
+stor_write(const char *path, const char *buf, size_t size,
+			off_t offset, struct fuse_file_info *fi)
+{
+	size_t len;
+	struct d_inode node;
+	struct file filp;
+	
+	if (open_namei(path, O_RDWR, DIR_INODE, &node))
+        return -ENOENT;
+	
+	filp.f_mode = node.i_mode;
+    filp.f_flags = node.i_mode;
+    filp.f_inode = &node;
+    filp.f_pos = (unsigned long) offset;
+
+    len = file_write(&node, &filp, buf, size);
+
+	//set_inode(node.i_cinode, &node);	
+	return len;
 }
 
 static struct fuse_operations stor_oper = {
@@ -172,10 +229,13 @@ static struct fuse_operations stor_oper = {
 	.readdir	= stor_readdir,
 	.mkdir		= stor_mkdir,
 	.open		= stor_open,
+	.create		= stor_create,
 	.read		= stor_read,
+	.write		= stor_write,
 };
 
-static void show_help(const char *progname)
+static void 
+show_help(const char *progname)
 {
 	printf("usage: %s [options] <mountpoint>\n\n", progname);
 	printf("File-system specific options:\n"
@@ -186,7 +246,8 @@ static void show_help(const char *progname)
 	       "\n");
 }
 
-int main(int argc, char *argv[])
+int 
+main(int argc, char *argv[])
 {
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
