@@ -138,7 +138,7 @@ create_block(struct d_inode *data, int data_block_num)
 	block_num = (data->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;	
 	block_list = (unsigned long *)malloc(sizeof(unsigned long) * block_num);	
 
-	if ((block_num != 0) && (data_block_num <= block_num)) {
+	if (data_block_num < block_num) {
 		get_data_block_list(data, block_list, block_num);
 		res = block_list[data_block_num];
 	} else {

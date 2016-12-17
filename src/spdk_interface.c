@@ -166,10 +166,12 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 {
 	unsigned long s = start * 8;
 	unsigned long l = length * 8;
+	int res;
 
-	printf("spdk_read_and_write()::start = %-15lu length = %-15lu\n", start, length);		
-
-	return spdk_rw(buf, s, l, mode);
+	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  start!\n", start, length);		
+	res = spdk_rw(buf, s, l, mode);
+	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
+	return res;
 }
 
 /*
