@@ -43,16 +43,25 @@ stor_init(struct fuse_conn_info *conn,
 			struct fuse_config *cfg)
 {
 	(void) conn;
+
+	printf("enter into stor_init();\n");
+
 	cfg->kernel_cache = 1;
 	if (spdk_init() != 0) 
 		exit(1);
+	
+	printf("come out   stor_init();\n");
 	return NULL;
 }
 
 static void 
 stor_destroy(void *value)
 {
+	printf("enter into stor_destroy();\n");
+	
 	spdk_cleanup();
+
+	printf("come out   stor_destroy();\n");
 }
 
 static int 
@@ -62,6 +71,8 @@ stor_getattr(const char *path, struct stat *stbuf,
 	(void) fi;
 	int res = 0;
 	struct d_inode dir;	
+
+	printf("enter into stor_getattr();\n");
 
 	memset(stbuf, 0, sizeof(struct stat));
 	/*if (strcmp(path, "/") == 0) {
@@ -83,6 +94,7 @@ stor_getattr(const char *path, struct stat *stbuf,
 	}
 	stbuf->st_nlink = 1;
 
+	printf("come out   stor_getattr();\n");
 	return res;
 }
 
@@ -97,6 +109,8 @@ stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	char (*dir_list)[NAME_LEN] ;
 	struct d_inode dir;	
 	int size, i;
+
+	printf("enter into stor_readdir();\n");
 
     if (open_namei(path, O_RDWR, DIR_INODE, &dir))
         return -ENOENT;
@@ -120,11 +134,12 @@ stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	}*/
 	
 	for (i = 0; i < size; i++){
-		printf("dir_list[%d] = %s\n", i, dir_list[i]);
+		//printf("dir_list[%d] = %s\n", i, dir_list[i]);
 		filler(buf, dir_list[i], NULL, 0, 0); 
 	}
 	free(dir_list);
-	printf("size = %d\n", size);
+	//printf("size = %d\n", size);
+	printf("come out   stor_readdir();\n");
 	return 0;
 }
 
@@ -133,10 +148,12 @@ stor_mkdir(const char *path, mode_t mode)
 {
 	int res;
 	
+	printf("enter into stor_mkdir();\n");
 	res = sys_mkdir(path);
 	if (res != 0)
 		return -errno;
 	
+	printf("come out   stor_mkdir();\n");
 	return 0;
 }
 
@@ -144,6 +161,9 @@ static int
 stor_open(const char *path, struct fuse_file_info *fi)
 {
 	struct d_inode node;
+
+	printf("enter into stor_open();\n");
+
 	/*if (strcmp(path+1, options.filename) != 0)
 		return -ENOENT;
 
@@ -154,6 +174,7 @@ stor_open(const char *path, struct fuse_file_info *fi)
 		sys_mknod(path);
 	} 
 	
+	printf("come out  stor_open();\n");
 	return 0;
 }
 
@@ -161,9 +182,14 @@ static int
 stor_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
 	struct d_inode node;
+
+	printf("enter into stor_create();\n");	
+
 	if (open_namei(path, O_RDWR, DIR_INODE, &node) == -ENOENT){
         sys_mknod(path);
     }
+
+	printf("come out  stor_create();\n");
 	return 0;
 }
 
@@ -175,6 +201,9 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 	(void) fi;
 	struct d_inode node;
 	struct file filp;
+	
+	printf("enter into stor_read();\n");	
+	printf("stor_read()::path=%s\n", path);
 
 	if (open_namei(path, O_RDWR, DIR_INODE, &node))
         return -ENOENT;
@@ -197,6 +226,7 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 	} else
 		size = 0;
 	*/
+	printf("come out   stor_read();\n");
 	return len;
 }
 
@@ -207,6 +237,9 @@ stor_write(const char *path, const char *buf, size_t size,
 	size_t len;
 	struct d_inode node;
 	struct file filp;
+	
+	printf("enter into stor_write();\n");	
+	printf("stor_write()::path=%s\n", path);
 	
 	if (open_namei(path, O_RDWR, DIR_INODE, &node))
         return -ENOENT;
@@ -220,6 +253,7 @@ stor_write(const char *path, const char *buf, size_t size,
 
 	//set_inode(node.i_cinode, &node);	
 	return len;
+	printf("come out   stor_write();\n");
 }
 
 static struct fuse_operations stor_oper = {
