@@ -20,5 +20,6 @@ int sys_mknod(const char *filename);
 int sys_mkdir(const char *filename);
 int sys_rmdir(const char *filename);
 int get_dir_list(const char *filename, char (*dir_list)[NAME_LEN], int *size);
+int sys_truncate(const char *filename, unsigned long length);
 
 #endif //NAMEI_H

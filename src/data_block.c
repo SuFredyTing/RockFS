@@ -13,7 +13,7 @@ get_data_location(unsigned long data_num, unsigned long *block_num)
 	*block_num = data_num + DATA_BLOCK_START;
 	
 	if( *block_num >= LOGIC_BLOCK_NUM ){
-		fprintf(stderr, "The number of data block overflows!");
+		fprintf(stderr, "The number of data block overflows!\n");
 		return false;
 	}
 

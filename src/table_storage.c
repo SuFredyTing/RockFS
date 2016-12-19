@@ -88,6 +88,7 @@ stor_getattr(const char *path, struct stat *stbuf,
 		return -ENOENT;
 	if ( dir.i_mode == DIR_INODE) {
 		stbuf->st_mode = S_IFDIR | 0755; 
+		stbuf->st_size = dir.i_tsize;
 	} else if ( dir.i_mode == COMMON_INODE) {
 		stbuf->st_mode = S_IFREG | 0666;
 		stbuf->st_size = dir.i_tsize;	
@@ -178,6 +179,16 @@ stor_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
+static int
+stor_truncate(const char *path, off_t size, struct fuse_file_info *fi)
+{
+	printf("enter into stor_truncate();\n");
+	if (sys_truncate(path, (unsigned long)size))
+		return -ENOENT;
+	printf("come out   stor_truncate();\n");
+	return 0;
+}
+
 static int 
 stor_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
@@ -213,19 +224,20 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 	filp.f_inode = &node;
 	filp.f_pos = (unsigned long) offset;
 
-	len = file_read(&node, &filp, buf, size);	
-
+	if (node.i_uid != 99) {
+		len = file_read(&node, &filp, buf, size);	
+	} else {
 	/*if(strcmp(path+1, options.filename) != 0)
 		return -ENOENT;
-
-	len = strlen(options.contents);
-	if (offset < len) {
-		if (offset + size > len)
-			size = len - offset;
-		memcpy(buf, options.contents + offset, size);
-	} else
-		size = 0;
 	*/
+		len = strlen(options.contents);
+		if (offset < (off_t)len) {
+			if (offset + size > len)
+				size = len - offset;
+			memcpy(buf, options.contents + offset, size);
+		} else
+			size = 0;
+	}
 	printf("come out   stor_read();\n");
 	return len;
 }
@@ -245,15 +257,23 @@ stor_write(const char *path, const char *buf, size_t size,
         return -ENOENT;
 	
 	filp.f_mode = node.i_mode;
-    filp.f_flags = node.i_mode;
-    filp.f_inode = &node;
-    filp.f_pos = (unsigned long) offset;
+	filp.f_flags = node.i_mode;
+	filp.f_inode = &node;
+	filp.f_pos = (unsigned long) offset;
 
-    len = file_write(&node, &filp, buf, size);
+	len = file_write(&node, &filp, (char *)buf, size);
 
 	//set_inode(node.i_cinode, &node);	
 	return len;
 	printf("come out   stor_write();\n");
+}
+
+static int
+stor_fsync(const char *path, int isdatasync, struct fuse_file_info *fi)
+{
+	printf("enter into stor_fsync();\n");
+	printf("come out   stor_fsync();\n");
+	return 0;
 }
 
 static struct fuse_operations stor_oper = {
@@ -263,9 +283,11 @@ static struct fuse_operations stor_oper = {
 	.readdir	= stor_readdir,
 	.mkdir		= stor_mkdir,
 	.open		= stor_open,
+	.truncate	= stor_truncate,
 	.create		= stor_create,
 	.read		= stor_read,
 	.write		= stor_write,
+	.fsync		= stor_fsync,
 };
 
 static void 

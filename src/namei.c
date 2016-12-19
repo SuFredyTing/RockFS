@@ -488,7 +488,8 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 			res_inode->i_mode = COMMON_INODE;
             res_inode->i_tsize = 0;	
 		}*/ else if (namelen != 0){
-			res_inode->i_mode = COMMON_INODE;
+			res_inode->i_mode  = COMMON_INODE;
+			res_inode->i_uid   = 99;
 			res_inode->i_tsize = 12;
 		}
 	}
@@ -558,6 +559,21 @@ get_dir_list(const char *filename, char (*dir_list)[NAME_LEN], int *size)
 	return 0;
 }
 
+int 
+sys_truncate(const char *filename, unsigned long length)
+{
+	struct d_inode dir;
+
+	if (open_namei(filename, O_RDWR, DIR_INODE, &dir))
+		return -ENOENT;
+
+	//printf("dir.i_size = %lu\ndir.i_tsize = %lu\n", dir.i_size, dir.i_tsize);	
+	dir.i_tsize = dir.i_size = length;//bug 会产生数据块泄漏,待修复!
+	//printf("dir.i_size = %lu\ndir.i_tsize = %lu\n", dir.i_size, dir.i_tsize);
+	set_inode(dir.i_cinode, &dir);
+		
+	return 0;
+}
 //int 
 //main(int argc, char *argv[])
 //{
