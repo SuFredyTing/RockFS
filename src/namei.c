@@ -97,15 +97,15 @@ add_dir_block_to_list(struct d_inode *dir, unsigned long data_num, int size)
 	if (size < 8) {
 		dir->i_zone[size] = data_num;
 	} else if (size < 520) {
-        read_data_block(dir->i_zone[8], (char *)buf);
-		buf[size] = data_num;
+		read_data_block(dir->i_zone[8], (char *)buf);
+		buf[size - 8] = data_num;
 		write_data_block(dir->i_zone[8], (char *)buf);
 	} else if (size < 262664) {
 		read_data_block(dir->i_zone[9], (char *)buf);
-        z = (size - 520) / 512;
-        r = (size - 520) % 512;
-        read_data_block(buf[z], (char *)buf1);
-        buf1[r] = data_num;
+		z = (size - 520) / 512;
+		r = (size - 520) % 512;
+		read_data_block(buf[z], (char *)buf1);
+		buf1[r] = data_num;
 		write_data_block(buf[z], (char *)buf1);
 	} else {
 		fprintf(stderr, "The size of file exceed the limit!\n");

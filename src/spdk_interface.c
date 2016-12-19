@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include <rte_config.h>
 #include <rte_eal.h>
 
@@ -100,7 +102,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 	//init();
 
 	ns_entry = g_namespaces;
-	while (ns_entry != NULL) {
+//	while (ns_entry != NULL) {
 		
 		ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
 		if (ns_entry->qpair == NULL) {
@@ -114,6 +116,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 		sequence.buf = spdk_zmalloc(length * 512, length * 512, NULL);
 
 		if (mode == WRITE) {
+			printf("$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd write start = %lu\n", start);
 			memcpy(sequence.buf, buf, sizeof(char) * length * 512);
 			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
 							start, 
@@ -125,7 +128,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 			}
 		} else if (mode == READ ) {
 			//sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
-			//printf("start = %lu\n", start);
+			printf("$$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd read start = %lu\n", start);
 			rc = spdk_nvme_ns_cmd_read(ns_entry->ns, ns_entry->qpair, sequence.buf,
 						   start,
 						   length,
@@ -155,11 +158,13 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
 		ns_entry = ns_entry->next;
 		//printf("ffffffffffffffffffffffff\n");
-	}
+//	}
 
 	//cleanup();
 	return 0;
 }
+
+pthread_mutex_t mutex_x = PTHREAD_MUTEX_INITIALIZER;
 
 int
 spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode)
@@ -169,7 +174,9 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	int res;
 
 	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  start!\n", start, length);		
+	pthread_mutex_lock(&mutex_x);
 	res = spdk_rw(buf, s, l, mode);
+	pthread_mutex_unlock(&mutex_x);
 	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
 	return res;
 }

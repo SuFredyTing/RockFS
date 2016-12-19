@@ -86,7 +86,7 @@ add_data_block_to_list(struct d_inode *data, unsigned long data_num, int size)
         data->i_zone[size] = data_num;
     } else if (size < 520) {
         read_data_block(data->i_zone[8], (char *)buf);
-        buf[size] = data_num;
+        buf[size - 8] = data_num;
         write_data_block(data->i_zone[8], (char *)buf);
     } else if (size < 262664) {
         read_data_block(data->i_zone[9], (char *)buf);
