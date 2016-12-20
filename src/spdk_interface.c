@@ -8,6 +8,7 @@
 
 #include "common.h"
 #include "spdk_interface.h"
+#include "t_time.h"
 
 struct ctrlr_entry {
 	struct spdk_nvme_ctrlr	*ctrlr;
@@ -116,7 +117,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 		sequence.buf = spdk_zmalloc(length * 512, length * 512, NULL);
 
 		if (mode == WRITE) {
-			printf("$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd write start = %lu\n", start);
+			//printf("$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd write start = %lu\n", start);
 			memcpy(sequence.buf, buf, sizeof(char) * length * 512);
 			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
 							start, 
@@ -128,7 +129,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 			}
 		} else if (mode == READ ) {
 			//sequence.buf = spdk_zmalloc(length * 4096, length * 4096, NULL);
-			printf("$$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd read start = %lu\n", start);
+			//printf("$$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd read start = %lu\n", start);
 			rc = spdk_nvme_ns_cmd_read(ns_entry->ns, ns_entry->qpair, sequence.buf,
 						   start,
 						   length,
@@ -164,7 +165,7 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 	return 0;
 }
 
-pthread_mutex_t mutex_x = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mutex_x = PTHREAD_MUTEX_INITIALIZER;
 
 int
 spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mode)
@@ -172,12 +173,15 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	unsigned long s = start * 8;
 	unsigned long l = length * 8;
 	int res;
-
-	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  start!\n", start, length);		
-	pthread_mutex_lock(&mutex_x);
+	unsigned long long a, b;
+	//printf("spdk_read_and_write()::start = %-15lu length = %-15lu  start!\n", start, length);		
+	//pthread_mutex_lock(&mutex_x);
+	a = get_time();
 	res = spdk_rw(buf, s, l, mode);
-	pthread_mutex_unlock(&mutex_x);
-	printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
+	b = get_time();
+	printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@spdk_interface::spdk_read_and_write time = %lf, mode = %d\n", (b-a)/2.2, mode);
+	//pthread_mutex_unlock(&mutex_x);
+	//printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
 	return res;
 }
 

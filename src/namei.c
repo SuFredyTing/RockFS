@@ -462,7 +462,7 @@ open_namei(const char *pathname, int flag, int mode, struct d_inode *res_inode)
 	const char *basename;
 	int namelen, error;
 
-	printf("open_namei::pathname = %s\n", pathname);
+	//printf("open_namei::pathname = %s\n", pathname);
 	get_inode(ROOT_INFO, &dir);
 	if (!dir_namei(pathname, &namelen, &basename, &dir, res_inode)) {
 		return -ENOENT;

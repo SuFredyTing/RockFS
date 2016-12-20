@@ -1,6 +1,8 @@
 #ifndef INODE_BLOCK_H
 #define INODE_BLOCK_H
 
+#include <stdbool.h>
+
 #include "common.h"
 
 // 磁盘上的索引节点(i 节点)数据结构。
