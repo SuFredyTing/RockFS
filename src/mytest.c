@@ -31,7 +31,13 @@ main(void)
 	b = get_time();
 	printf("write time = %lf\n", (b-a)/2.2);
 	
-	
+	memset(buf, 0, 5);
+	a = get_time();
+	file_read(&node, &filp, buf, 5);
+	b = get_time();	
+	printf("read time = %lf\n", (b-a)/2.2);
+		
+	printf("buf = %s\n", buf);
 	spdk_cleanup();
 	free(buf);
 	return 0;

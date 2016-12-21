@@ -6,6 +6,8 @@
 #include "spdk_interface.h"
 #include "inode_block.h"
 
+//static char buf[BLOCK_SIZE];
+
 bool 
 get_inode_location(unsigned long inode_num, unsigned long *block_num, 
 				   unsigned long *inter_num)

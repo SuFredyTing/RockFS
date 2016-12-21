@@ -179,7 +179,7 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	a = get_time();
 	res = spdk_rw(buf, s, l, mode);
 	b = get_time();
-	printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@spdk_interface::spdk_read_and_write time = %lf, mode = %d\n", (b-a)/2.2, mode);
+	printf("[spdk_interface] spdk_read_and_write::time = %lf, mode = %d, start = %lu\n", (b-a)/2.2, mode, start);
 	//pthread_mutex_unlock(&mutex_x);
 	//printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
 	return res;

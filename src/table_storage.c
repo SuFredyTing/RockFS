@@ -34,6 +34,7 @@ static const struct fuse_opt option_spec[] = {
 };
 
 static struct d_inode inode;
+static bool   file_is_exist = false;
 
 static void *
 stor_init(struct fuse_conn_info *conn,
@@ -41,24 +42,17 @@ stor_init(struct fuse_conn_info *conn,
 {
 	(void) conn;
 
-	//printf("enter into stor_init();\n");
-
 	cfg->kernel_cache = 1;
 	if (spdk_init() != 0) 
 		exit(1);
-	
-	//printf("come out   stor_init();\n");
+
 	return NULL;
 }
 
 static void 
 stor_destroy(void *value)
 {
-	//printf("enter into stor_destroy();\n");
-	
 	spdk_cleanup();
-
-	//printf("come out   stor_destroy();\n");
 }
 
 static int 
@@ -67,22 +61,16 @@ stor_getattr(const char *path, struct stat *stbuf,
 {
 	(void) fi;
 	int res = 0;
-	//struct d_inode dir;	
 	unsigned long long a, b, c;
-	//printf("enter into stor_getattr();\n");
+	
 	a = get_time();
 	memset(stbuf, 0, sizeof(struct stat));
-	/*if (strcmp(path, "/") == 0) {
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-	} else if (strcmp(path+1, options.filename) == 0) {
-		stbuf->st_mode = S_IFREG | 0444;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = strlen(options.contents);
-	} else
-		res = -ENOENT;*/
-	if (open_namei(path, O_RDWR, DIR_INODE, &inode))
+	if (open_namei(path, O_RDWR, DIR_INODE, &inode)){
+		file_is_exist = false;
+    	b = get_time();
+	    printf("[stor_getattr] time = %lf\n", (b-a)/2.2);
 		return -ENOENT;
+	}
 	if ( inode.i_mode == DIR_INODE) {
 		stbuf->st_mode = S_IFDIR | 0755; 
 		stbuf->st_size = inode.i_tsize;
@@ -92,8 +80,9 @@ stor_getattr(const char *path, struct stat *stbuf,
 	}
 	stbuf->st_nlink = 1;
 	b = get_time();
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_getattr:: time = %lf\n", (b-a)/2.2);
-	//printf("come out   stor_getattr();\n");
+	printf("[stor_getattr] time = %lf\n", (b-a)/2.2);
+	file_is_exist = true;
+	
 	return res;
 }
 
@@ -106,14 +95,12 @@ stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 	(void) flags;
 	char (*dir_list)[NAME_LEN] ;
-	//struct d_inode dir;	
 	int size, i;
 	unsigned long long a, b, c;
 	
-	//printf("enter into stor_readdir();\n");
 	a = get_time();
-    //if (open_namei(path, O_RDWR, DIR_INODE, &inode))
-    //    return -ENOENT;
+	if (open_namei(path, O_RDWR, DIR_INODE, &inode))
+        return -ENOENT;
 	b = get_time();
     size = (inode.i_tsize + DIR_ENTRY_SIZE - 1) / DIR_ENTRY_SIZE;
     dir_list = (char (*)[NAME_LEN])malloc(size * NAME_LEN * sizeof(char));
@@ -121,26 +108,13 @@ stor_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     if (!get_dir_entry_list(&inode, dir_list))
         return -99;
 	
-	/*if (strcmp(path, "/") != 0)
-		return -ENOENT;
-
-	filler(buf, ".", NULL, 0, 0);
-	filler(buf, "..", NULL, 0, 0);*/
 	filler(buf, options.filename, NULL, 0, 0);
 	
-	/*if ((error = get_dir_list(path, dir_list, &size))){
-		printf("size = %d\nerror = %d", size, error);
-		return error;
-	}*/
-	
 	for (i = 0; i < size; i++){
-		//printf("dir_list[%d] = %s\n", i, dir_list[i]);
 		filler(buf, dir_list[i], NULL, 0, 0); 
 	}
 	free(dir_list);
-	//printf("size = %d\n", size);
-	//printf("come out   stor_readdir();\n");
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_readdir::open_namei time = %lf\nstor_readdir::malloc time = %lf\nstor_readdir::get_dir_entry_list time = %lf\n", (b-a)/2.2, (c-b)/2.2, (get_time() -c)/2.2);
+	printf("[stor_readdir] open_namei::time = %lf\nstor_readdir::malloc time = %lf\n[stor_readdir] get_dir_entry_list::time = %lf\n", (b-a)/2.2, (c-b)/2.2, (get_time() -c)/2.2);
 	return 0;
 }
 
@@ -149,36 +123,24 @@ stor_mkdir(const char *path, mode_t mode)
 {
 	int res;
 	
-	//printf("enter into stor_mkdir();\n");
 	res = sys_mkdir(path);
 	if (res != 0)
 		return -errno;
 	
-	//printf("come out   stor_mkdir();\n");
 	return 0;
 }
 
 static int 
 stor_open(const char *path, struct fuse_file_info *fi)
 {
-	//struct d_inode node;
 	unsigned long long a, b;
-	//printf("enter into stor_open();\n");
-
-	/*if (strcmp(path+1, options.filename) != 0)
-		return -ENOENT;
-
-	if ((fi->flags & 3) != O_RDONLY)
-		return -EACCES;
-	*/
 
 	a = get_time();
 	if (open_namei(path, O_RDWR, DIR_INODE, &inode) == -ENOENT){
 		sys_mknod(path);
 	} 
 	b = get_time();
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_open:: time = %lf\n", (b - a) / 2.2);
-	//printf("come out  stor_open();\n");
+	printf("[stor_open] time = %lf\n", (b - a) / 2.2);
 	return 0;
 }
 
@@ -188,28 +150,31 @@ stor_truncate(const char *path, off_t size, struct fuse_file_info *fi)
 	unsigned long long a, b;
 	
 	a = get_time();
-	//printf("enter into stor_truncate();\n");
-	if (sys_truncate(path, (unsigned long)size))
-		return -ENOENT;
+	//if (sys_truncate(path, (unsigned long)size))
+	//	return -ENOENT;
+	inode.i_tsize = inode.i_size = (unsigned long)size;
+	set_inode(inode.i_cinode, &inode);
 	b = get_time();
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_truncate:: time = %lf\n", (b - a) / 2.2);
-	//printf("come out   stor_truncate();\n");
+	printf("[stor_truncate] time = %lf\n", (b - a) / 2.2);
 	return 0;
 }
 
 static int 
 stor_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
-	//struct d_inode node;
 	unsigned long long a, b;
-	//printf("enter into stor_create();\n");	
-	a = get_time();
+	a = get_time();	
+	if (!file_is_exist){
+		sys_mknod(path);
+		//open_namei(path, O_CREAT, COMMON_INODE, &inode);
+	}	
+	
+	/*
 	if (open_namei(path, O_RDWR, DIR_INODE, &inode) == -ENOENT){
         sys_mknod(path);
-    }
+    }*/
 	b = get_time();
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_create():: time = %lf\n", (b - a) / 2.2);
-	//printf("come out  stor_create();\n");
+	printf("[stor_create()] time = %lf\n", (b - a) / 2.2);
 	return 0;
 }
 
@@ -219,14 +184,9 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	size_t len;
 	(void) fi;
-	//struct d_inode node;
 	struct file filp;
 	unsigned long long a, b;
-	//printf("enter into stor_read();\n");	
-	//printf("stor_read()::path=%s\n", path);
 	a = get_time();
-	//if (open_namei(path, O_RDWR, DIR_INODE, &node))
-    //    return -ENOENT;
 
 	filp.f_mode = inode.i_mode;
 	filp.f_flags = inode.i_mode;
@@ -236,9 +196,6 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 	if (inode.i_uid != 99) {
 		len = file_read(&inode, &filp, buf, size);	
 	} else {
-	/*if(strcmp(path+1, options.filename) != 0)
-		return -ENOENT;
-	*/
 		len = strlen(options.contents);
 		if (offset < (off_t)len) {
 			if (offset + size > len)
@@ -248,8 +205,7 @@ stor_read(const char *path, char *buf, size_t size, off_t offset,
 			size = 0;
 	}
 
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_read()::open_namei time = %lf\nstor_read()::file_read time = %lf\n", (b - a) / 2.2, (get_time() - b) / 2.2);
-	//printf("come out   stor_read();\n");
+	printf("[stor_read()] open_namei::time = %lf\n[stor_read()] file_read::time = %lf\n", (b - a) / 2.2, (get_time() - b) / 2.2);
 	return len;
 }
 
@@ -258,15 +214,10 @@ stor_write(const char *path, const char *buf, size_t size,
 			off_t offset, struct fuse_file_info *fi)
 {
 	size_t len;
-	//struct d_inode node;
 	struct file filp;
 	unsigned long long a, b;	
-	//printf("enter into stor_write();\n");	
-	//printf("stor_write()::path=%s\n", path);
 	
 	a = get_time();
-	//if (open_namei(path, O_RDWR, DIR_INODE, &node))
-    //    return -ENOENT;
 	b = get_time();
 	filp.f_mode = inode.i_mode;
 	filp.f_flags = inode.i_mode;
@@ -274,17 +225,13 @@ stor_write(const char *path, const char *buf, size_t size,
 	filp.f_pos = (unsigned long) offset;
 	
 	len = file_write(&inode, &filp, (char *)buf, size);
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$stor_write()::open_namei time = %lf\nstor_write()::file_write time = %lf\n", (b - a) / 2.2, (get_time() - b) / 2.2);
-	//set_inode(node.i_cinode, &node);	
+	printf("[stor_write()] open_namei::time = %lf\n[stor_write()] file_write::time = %lf\n", (b - a) / 2.2, (get_time() - b) / 2.2);
 	return len;
-	//printf("come out   stor_write();\n");
 }
 
 static int
 stor_fsync(const char *path, int isdatasync, struct fuse_file_info *fi)
 {
-	//printf("enter into stor_fsync();\n");
-	//printf("come out   stor_fsync();\n");
 	return 0;
 }
 
@@ -313,6 +260,7 @@ show_help(const char *progname)
 	       "                        (default \"Hello, World!\\n\")\n"
 	       "\n");
 }
+
 
 int 
 main(int argc, char *argv[])
