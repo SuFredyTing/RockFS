@@ -13,13 +13,15 @@ main(void)
 {
 	struct d_inode node;
 	struct file filp;	
-	char *buf = (char *)malloc(5);
+	char *buf = (char *)malloc(4096);
 	unsigned long long a, b;
 	
 	memcpy(buf,"1234",5);
 	
 	spdk_init();
+	test();
 	
+	printf("test");	
 	a = get_time();
 	open_namei("/121", O_RDWR, DIR_INODE, &node);
 	filp.f_mode = node.i_mode;
@@ -41,5 +43,5 @@ main(void)
 	spdk_cleanup();
 	free(buf);
 	return 0;
-}
-*/
+}*/
+

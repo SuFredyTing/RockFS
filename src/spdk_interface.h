@@ -21,6 +21,7 @@ bool probe_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
        			     struct spdk_nvme_ctrlr_opts *opts);
 void attach_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
           	    	 struct spdk_nvme_ctrlr *ctrlr, const struct spdk_nvme_ctrlr_opts *opts);
+void test(void);
 void spdk_cleanup(void);
 int  spdk_init(void);
 

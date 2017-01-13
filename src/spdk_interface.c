@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <time.h>
 
 #include <rte_config.h>
 #include <rte_eal.h>
@@ -38,6 +39,23 @@ struct storage_sequence {
 
 static struct ctrlr_entry *g_controllers = NULL;
 static struct ns_entry *g_namespaces = NULL;
+
+struct timespec time1, time2, time3, time4;
+
+struct timespec diff(struct timespec start, struct timespec end)
+{
+    struct timespec temp;
+    if ((end.tv_nsec-start.tv_nsec)<0) {
+        temp.tv_sec = end.tv_sec-start.tv_sec-1;
+        temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+    } else {
+        temp.tv_sec = end.tv_sec-start.tv_sec;
+        temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+    }
+    return temp;
+}
+
+
 
 void
 register_ns(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns)
@@ -93,33 +111,38 @@ write_complete(void *arg, const struct spdk_nvme_cpl *completion)
 	sequence->is_completed = 1;
 }
 
+struct storage_sequence sequence;
+struct ns_entry         *ns_entry;
+struct spdk_nvme_qpair* qwrite;
+
 int 
 spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 {
-	struct ns_entry         *ns_entry;
-	struct storage_sequence sequence;
+	//struct ns_entry         *ns_entry;
+	//struct storage_sequence sequence;
 	int             rc;
 
 	//init();
 
-	ns_entry = g_namespaces;
+//	ns_entry = g_namespaces;
 //	while (ns_entry != NULL) {
 		
-		ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
-		if (ns_entry->qpair == NULL) {
-			printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
-			return -1;
-		}
+//		ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
+//		if (ns_entry->qpair == NULL) {
+//			printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
+//			return -1;
+//		}
 		
 		sequence.is_completed = 0;
 		sequence.ns_entry = ns_entry;
 
-		sequence.buf = spdk_zmalloc(length * 512, length * 512, NULL);
+	//	sequence.buf = spdk_zmalloc(length * 512, length * 512, NULL);
 
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time3);
 		if (mode == WRITE) {
 			//printf("$$$$$$$$$$$$$$$$$$$$$$$$ nvme ssd write start = %lu\n", start);
 			memcpy(sequence.buf, buf, sizeof(char) * length * 512);
-			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
+			rc = spdk_nvme_ns_cmd_write(ns_entry->ns, qwrite, sequence.buf,
 							start, 
 							length, 
 							write_complete, &sequence, 0);
@@ -143,10 +166,19 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 //			memcpy(*buf, sequence.buf, sizeof(char) * 4096);
 //			printf("*buf=%s\n",*buf);
 		}
-        
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time4);        
+		printf("time = %ld\n",  diff(time3,time4).tv_nsec);
+		
 	    while (!sequence.is_completed) {
-        	spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
+			if (mode == WRITE) {
+				spdk_nvme_qpair_process_completions(qwrite, 0);	
+			} else if (mode == READ) {
+        		spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
+			}
 		}
+	    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time4);
+        printf("time = %ld\n",  diff(time3,time4).tv_nsec);
+
 		//printf("tystesting\n");
 		if (mode == READ) {
 			//printf("sequence.buf=%s\n", sequence.buf);
@@ -154,10 +186,10 @@ spdk_rw(char *buf, unsigned long start, unsigned long length, int mode)
 			//printf("*buf=%s\n",buf);
 		}
     	
-		spdk_free(sequence.buf);
+//		spdk_free(sequence.buf);
 		
-		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
-		ns_entry = ns_entry->next;
+//		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
+//		ns_entry = ns_entry->next;
 		//printf("ffffffffffffffffffffffff\n");
 //	}
 
@@ -176,10 +208,12 @@ spdk_read_and_write(char *buf, unsigned long start, unsigned long length, int mo
 	unsigned long long a, b;
 	//printf("spdk_read_and_write()::start = %-15lu length = %-15lu  start!\n", start, length);		
 	//pthread_mutex_lock(&mutex_x);
-	a = get_time();
+	//a = get_time();
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	res = spdk_rw(buf, s, l, mode);
-	b = get_time();
-	printf("[spdk_interface] spdk_read_and_write::time = %lf, mode = %d, start = %lu\n", (b-a)/2.2, mode, start);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	//b = get_time();
+	printf("[spdk_interface] spdk_read_and_write::time = %ld, mode = %d, start = %lu\n", diff(time1,time2).tv_nsec, mode, start);
 	//pthread_mutex_unlock(&mutex_x);
 	//printf("spdk_read_and_write()::start = %-15lu length = %-15lu  end!\n", start, length);	
 	return res;
@@ -273,6 +307,24 @@ attach_cb(void *cb_ctx, const struct spdk_nvme_probe_info *probe_info,
 	}
 }
 
+void test(void){
+	    ns_entry = g_namespaces;
+//  while (ns_entry != NULL) {
+
+		ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
+        if (ns_entry->qpair == NULL) {
+	        printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
+   //         return -1;
+		}
+	
+		qwrite = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
+        if (qwrite == NULL) {
+            printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
+     //       return -1;
+        }
+
+}
+
 void
 spdk_cleanup(void)
 {
@@ -292,6 +344,12 @@ spdk_cleanup(void)
 		free(ctrlr_entry);
 		ctrlr_entry = next;
 	}
+
+//    spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
+
+	spdk_free(sequence.buf);
+    spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
+	spdk_nvme_ctrlr_free_io_qpair(qwrite);
 }
 
 int 
@@ -313,6 +371,19 @@ spdk_init(void)
 		spdk_cleanup();
 		return 1;
 	}
+
+
+//  ns_entry = g_namespaces;
+//  while (ns_entry != NULL) {
+
+//	    ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, 0);
+//        if (ns_entry->qpair == NULL) {
+//	        printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
+//	        return -1;
+//		}
+
+	test();
+	sequence.buf = spdk_zmalloc(8 * 512, 8 * 512, NULL);	
 
 	printf("Initialization complete.\n");
 	return 0;
